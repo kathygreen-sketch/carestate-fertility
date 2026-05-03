@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareState — Partner Command Center</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { careblue:'#00BAFF', careyellow:'#FFED4A', dark:'#1A1A1B', muted:'#6B7280' },
+          fontFamily: { sans:['Inter','sans-serif'], heading:['Outfit','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { background: #F0F2F5; }
+
+    /* Pulse indicators */
+    .pulse-blue   { animation: pBlue   2s ease-in-out infinite; }
+    .pulse-yellow { animation: pYellow 1.8s ease-in-out infinite; }
+    .pulse-red    { animation: pRed    1.4s ease-in-out infinite; }
+    @keyframes pBlue   { 0%,100%{box-shadow:0 0 0 0 rgba(0,186,255,.5)}   50%{box-shadow:0 0 0 7px rgba(0,186,255,0)} }
+    @keyframes pYellow { 0%,100%{box-shadow:0 0 0 0 rgba(255,237,74,.7)}  50%{box-shadow:0 0 0 7px rgba(255,237,74,0)} }
+    @keyframes pRed    { 0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.7)}   50%{box-shadow:0 0 0 8px rgba(239,68,68,0)} }
+
+    /* Table */
+    .grid-table th { font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#9CA3AF; font-weight:700; padding:10px 14px; border-bottom:1px solid #E5E7EB; white-space:nowrap; background:#F9FAFB; }
+    .grid-table td { padding:12px 14px; border-bottom:1px solid #F3F4F6; vertical-align:middle; }
+    .grid-table tr:hover td { background:#F9FBFF; }
+    .grid-table tr.critical-row td { background:#FFF5F5; }
+    .grid-table tr.critical-row:hover td { background:#FFEEEE; }
+
+    /* Sidebar nav */
+    .nav-item { display:flex; align-items:center; gap:10px; padding:9px 14px; border-radius:10px; font-size:13px; font-weight:600; color:#6B7280; cursor:pointer; transition:background .15s, color .15s; }
+    .nav-item:hover { background:#F0F9FF; color:#00BAFF; }
+    .nav-item.active { background:#00BAFF; color:#fff; }
+    .nav-item svg { width:16px; height:16px; flex-shrink:0; }
+
+    /* Sheet / modal */
+    .cmd-sheet { position:fixed; inset:0; z-index:100; display:none; align-items:flex-end; justify-content:center; }
+    .cmd-sheet.open { display:flex; }
+    .cmd-overlay { position:absolute; inset:0; background:rgba(0,0,0,.45); }
+    .cmd-panel { position:relative; background:#fff; border-radius:20px 20px 0 0; width:100%; max-width:520px; padding:28px 28px 36px; box-shadow:0 -8px 40px rgba(0,0,0,.12); max-height:92vh; overflow-y:auto; }
+
+    /* Toast */
+    .toast { position:fixed; top:20px; right:20px; background:#1A1A1B; color:#fff; font-size:13px; font-weight:600; padding:12px 20px; border-radius:12px; z-index:200; opacity:0; transform:translateY(-8px); transition:all .25s ease; pointer-events:none; }
+    .toast.show { opacity:1; transform:translateY(0); }
+    .toast.blue  { background:#00BAFF; }
+    .toast.green { background:#10B981; }
+
+    /* QSBS footer */
+    .qsbs-bar-fill { transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+
+    /* Status badge */
+    .badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+
+    /* Tab panel */
+    .tab-panel { display:none; }
+    .tab-panel.active { display:block; }
+
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .spin { animation:spin 1s linear infinite; }
+
+    @media (max-width:768px) {
+      .sidebar { display:none; }
+      .main-content { margin-left:0 !important; }
+      .mobile-tabs { display:flex !important; }
+    }
+    .mobile-tabs { display:none; overflow-x:auto; }
+  </style>
+</head>
+<body class="font-sans antialiased">
+
+<!-- ── Top Bar ─────────────────────────────────────────────────── -->
+<header class="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200" style="box-shadow:0 1px 8px rgba(0,0,0,.06)">
+  <div class="flex items-center justify-between px-6 h-14 max-w-[1200px] mx-auto">
+    <div class="flex items-center space-x-3">
+      <a href="index.html" class="w-8 h-8 bg-careblue rounded-lg flex items-center justify-center hover:opacity-80 transition-opacity" title="Home">
+        <span class="text-white font-heading font-bold text-sm leading-none">C</span>
+      </a>
+      <div>
+        <div class="font-heading font-bold text-sm text-dark leading-none">CareState Fertility</div>
+        <div class="text-[10px] text-muted font-medium">Partner Command Center</div>
+      </div>
+      <div class="hidden md:flex items-center space-x-1.5 ml-4 bg-careblue/8 border border-careblue/20 px-3 py-1 rounded-full" style="background:rgba(0,186,255,.06)">
+        <div class="w-1.5 h-1.5 bg-careblue rounded-full pulse-blue"></div>
+        <span class="text-[10px] font-bold text-careblue" data-i18n="partner.live_sync">Live Sync Active</span>
+      </div>
+    </div>
+    <div class="flex items-center space-x-4">
+      <div class="text-right hidden sm:block">
+        <div class="text-xs font-bold text-dark" id="clock-display">--:--</div>
+        <div class="text-[10px] text-muted">Riverside Fertility · Shift B</div>
+      </div>
+      <div class="flex items-center space-x-2">
+        <div class="w-8 h-8 bg-careblue rounded-full flex items-center justify-center">
+          <span class="text-white text-xs font-bold">SK</span>
+        </div>
+        <div class="hidden sm:block">
+          <div class="text-xs font-bold text-dark">Nurse Sarah K.</div>
+          <div class="text-[10px] text-muted">RN · Embryology Coordinator</div>
+        </div>
+      </div>
+      <a href="dashboard.html" class="text-xs font-bold text-muted border border-gray-200 px-3 py-1.5 rounded-lg hover:border-careblue hover:text-careblue transition-colors" data-i18n="partner.patient_view">Patient View</a>
+    </div>
+  </div>
+</header>
+
+<!-- ── Mobile Tab Bar ─────────────────────────────────────────── -->
+<div class="mobile-tabs fixed top-14 left-0 right-0 z-30 bg-white border-b border-gray-200 px-4 py-2 gap-2">
+  <button onclick="switchTab('grid')"    class="mobile-tab flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg bg-careblue text-white" id="mtab-grid" data-i18n="partner.nav.med_sync">Med-Sync</button>
+  <button onclick="switchTab('package')" class="mobile-tab flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg text-muted" id="mtab-package" data-i18n="partner.nav.package">Packages</button>
+  <button onclick="switchTab('rescue')"  class="mobile-tab flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg text-muted" id="mtab-rescue" data-i18n="partner.nav.rescue">Rescue</button>
+  <button onclick="switchTab('qsbs')"    class="mobile-tab flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg text-muted" id="mtab-qsbs" data-i18n="partner.nav.qsbs">QSBS</button>
+</div>
+
+<!-- ── Layout ─────────────────────────────────────────────────── -->
+<div class="flex pt-14 max-w-[1200px] mx-auto min-h-screen">
+
+  <!-- Sidebar -->
+  <aside class="sidebar fixed left-0 top-14 bottom-0 w-56 bg-white border-r border-gray-200 p-4 overflow-y-auto" style="left:max(0px, calc(50% - 600px))">
+    <div class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-2" data-i18n="partner.navigation">Navigation</div>
+    <nav class="space-y-1 mb-6">
+      <div class="nav-item active" id="nav-grid" onclick="switchTab('grid')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        Med-Sync Grid
+        <span class="ml-auto bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full" id="critical-badge">2</span>
+      </div>
+      <div class="nav-item" id="nav-package" onclick="switchTab('package')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+        Package State
+      </div>
+      <div class="nav-item" id="nav-rescue" onclick="switchTab('rescue')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        Precision Rescue
+      </div>
+      <div class="nav-item" id="nav-qsbs" onclick="switchTab('qsbs')">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        QSBS Monitor
+      </div>
+    </nav>
+
+    <div class="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-2" data-i18n="partner.shift_summary">Shift Summary</div>
+    <div class="space-y-2">
+      <div class="bg-gray-50 rounded-xl p-3">
+        <div class="text-[10px] text-muted mb-1" data-i18n="partner.active_patients">Active Patients</div>
+        <div class="text-xl font-heading font-bold text-dark">8</div>
+      </div>
+      <div class="bg-red-50 rounded-xl p-3">
+        <div class="text-[10px] text-red-400 font-bold mb-1" data-i18n="partner.critical_alerts">Critical Alerts</div>
+        <div class="text-xl font-heading font-bold text-red-500" id="sidebar-critical">2</div>
+      </div>
+      <div class="bg-careblue/5 rounded-xl p-3">
+        <div class="text-[10px] text-careblue font-bold mb-1" data-i18n="partner.verified_today">Verified Today</div>
+        <div class="text-xl font-heading font-bold text-careblue">5</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main-content flex-1 ml-56 p-6 pb-32" style="min-height:calc(100vh - 56px)">
+
+    <!-- ══════════ TAB: MED-SYNC GRID ══════════ -->
+    <div id="tab-grid" class="tab-panel active">
+
+      <!-- Header row -->
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h1 class="font-heading text-xl font-bold text-dark" data-i18n="partner.grid.title">Patient Med-Sync Grid</h1>
+          <p class="text-xs text-muted mt-0.5" data-i18n="partner.grid.sub">Real-time medication verification status · Shift B</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <div class="flex items-center bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <button onclick="filterPatients('all')"      class="filter-btn active px-3 py-1.5 text-xs font-bold text-careblue" data-filter="all">All</button>
+            <button onclick="filterPatients('critical')" class="filter-btn px-3 py-1.5 text-xs font-bold text-muted border-l border-gray-200" data-filter="critical">Critical</button>
+            <button onclick="filterPatients('pending')"  class="filter-btn px-3 py-1.5 text-xs font-bold text-muted border-l border-gray-200" data-filter="pending">Pending</button>
+            <button onclick="filterPatients('verified')" class="filter-btn px-3 py-1.5 text-xs font-bold text-muted border-l border-gray-200" data-filter="verified">Verified</button>
+          </div>
+          <button onclick="refreshGrid()" class="w-8 h-8 bg-white border border-gray-200 rounded-xl flex items-center justify-center hover:border-careblue transition-colors" id="refresh-btn">
+            <svg class="w-3.5 h-3.5 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Pro-Grid Table -->
+      <div class="bg-white rounded-2xl overflow-hidden border border-gray-200" style="box-shadow:0 2px 12px rgba(0,0,0,.04)">
+        <table class="grid-table w-full">
+          <thead>
+            <tr>
+              <th class="text-left w-8"></th>
+              <th class="text-left" data-i18n="partner.th.patient">Patient</th>
+              <th class="text-left" data-i18n="partner.th.phase">Phase · Day</th>
+              <th class="text-left" data-i18n="partner.th.injection">Next Injection</th>
+              <th class="text-left" data-i18n="partner.th.medications">Medications</th>
+              <th class="text-left" data-i18n="partner.th.pharmacy">Pharmacy</th>
+              <th class="text-left" data-i18n="partner.th.status">Status</th>
+              <th class="text-left" data-i18n="partner.th.actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="patient-grid"></tbody>
+        </table>
+      </div>
+
+      <p class="text-[10px] text-gray-400 mt-3">Last synced: <span id="last-sync-label">Just now</span> · Auto-refreshes every 60s</p>
+    </div>
+
+    <!-- ══════════ TAB: PACKAGE STATE ══════════ -->
+    <div id="tab-package" class="tab-panel">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <h1 class="font-heading text-xl font-bold text-dark" data-i18n="partner.package.title">Package State — BIFI Layer</h1>
+          <p class="text-xs text-muted mt-0.5" data-i18n="partner.package.sub">Financial authorization status · Clinical execution is gated on approval</p>
+        </div>
+      </div>
+      <div id="package-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
+
+    <!-- ══════════ TAB: PRECISION RESCUE ══════════ -->
+    <div id="tab-rescue" class="tab-panel">
+      <div class="mb-5">
+        <h1 class="font-heading text-xl font-bold text-dark" data-i18n="partner.rescue.title">Precision Rescue</h1>
+        <p class="text-xs text-muted mt-0.5" data-i18n="partner.rescue.sub">Send a one-touch clinical override directly to a patient's Now Card</p>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+        <!-- Patient selector -->
+        <div class="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-5" style="box-shadow:0 2px 12px rgba(0,0,0,.04)">
+          <div class="text-xs font-bold text-muted uppercase tracking-widest mb-3" data-i18n="partner.rescue.select">Select Patient</div>
+          <div id="rescue-patient-list" class="space-y-1.5"></div>
+        </div>
+
+        <!-- Message composer -->
+        <div class="lg:col-span-3 bg-white rounded-2xl border border-gray-200 p-5" style="box-shadow:0 2px 12px rgba(0,0,0,.04)">
+          <div class="text-xs font-bold text-muted uppercase tracking-widest mb-3" data-i18n="partner.rescue.override">Override Message</div>
+
+          <div class="text-[10px] font-bold text-muted uppercase tracking-widest mb-2" data-i18n="partner.rescue.templates">Quick Templates</div>
+          <div class="grid grid-cols-2 gap-2 mb-4" id="template-btns">
+            <button onclick="setTemplate(this,'Dose adjusted: Take 300 IU Gonal-F tonight at 9 PM as planned.')" class="template-btn text-left text-xs font-medium text-dark bg-gray-50 border border-gray-200 rounded-xl p-3 hover:border-careblue hover:text-careblue transition-colors">
+              <div class="font-bold mb-0.5">Dose Adjusted</div>
+              <div class="text-muted text-[10px]">Confirm tonight's dose</div>
+            </button>
+            <button onclick="setTemplate(this,'Delay injection by 30 minutes. Take at 9:30 PM tonight instead.')" class="template-btn text-left text-xs font-medium text-dark bg-gray-50 border border-gray-200 rounded-xl p-3 hover:border-careblue hover:text-careblue transition-colors">
+              <div class="font-bold mb-0.5">Delay 30 min</div>
+              <div class="text-muted text-[10px]">Push injection window</div>
+            </button>
+            <button onclick="setTemplate(this,'Protocol confirmed. Proceed exactly as planned for tonight.')" class="template-btn text-left text-xs font-medium text-dark bg-gray-50 border border-gray-200 rounded-xl p-3 hover:border-careblue hover:text-careblue transition-colors">
+              <div class="font-bold mb-0.5">Proceed as Planned</div>
+              <div class="text-muted text-[10px]">Green light confirmation</div>
+            </button>
+            <button onclick="setTemplate(this,'URGENT: Please call the clinic immediately before your injection tonight. Do not proceed without speaking to a nurse.')" class="template-btn text-left text-xs font-medium text-dark bg-red-50 border border-red-200 rounded-xl p-3 hover:border-red-400 text-red-600 transition-colors">
+              <div class="font-bold mb-0.5 text-red-600">Call Clinic Now</div>
+              <div class="text-red-400 text-[10px]">Emergency escalation</div>
+            </button>
+          </div>
+
+          <div class="text-[10px] font-bold text-muted uppercase tracking-widest mb-2" data-i18n="partner.rescue.custom">Custom Message</div>
+          <textarea id="rescue-message" rows="3" placeholder="Type a custom clinical override…"
+            class="w-full text-sm text-dark bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 resize-none focus:outline-none focus:border-careblue focus:ring-2 focus:ring-careblue/10 transition-colors mb-4"></textarea>
+
+          <div id="rescue-recipient" class="text-xs text-muted mb-4">No patient selected — choose from the left panel.</div>
+
+          <button onclick="sendRescue()" id="send-rescue-btn"
+            class="w-full bg-careblue text-white font-bold py-3.5 rounded-xl text-sm flex items-center justify-center space-x-2 hover:bg-careblue/90 transition-colors disabled:opacity-40" disabled>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+            <span data-i18n="partner.rescue.send">Send Precision Rescue</span>
+          </button>
+          <p class="text-[10px] text-center text-muted mt-2" data-i18n="partner.rescue.note">Override will appear instantly on the patient's Now Card.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════ TAB: QSBS ══════════ -->
+    <div id="tab-qsbs" class="tab-panel">
+      <div class="mb-5">
+        <h1 class="font-heading text-xl font-bold text-dark">QSBS Compliance Monitor</h1>
+        <p class="text-xs text-muted mt-0.5">IRC §1202 · Section 1202 Qualified Small Business Stock · $50M gross asset threshold</p>
+      </div>
+      <div id="qsbs-full-view"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ── QSBS Footer Widget (always visible) ─────────────────────── -->
+<footer class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-30" style="box-shadow:0 -2px 12px rgba(0,0,0,.05)">
+  <div class="max-w-[1200px] mx-auto px-6 py-2.5 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">QSBS §1202</div>
+      <div class="w-40 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div id="qsbs-footer-bar" class="qsbs-bar-fill h-full bg-careblue rounded-full" style="width:6.4%"></div>
+      </div>
+      <div class="text-[10px] font-bold" id="qsbs-footer-pct">6.4% of $50M</div>
+      <div class="badge bg-green-50 text-green-600 border border-green-200" id="qsbs-footer-badge">Safe</div>
+    </div>
+    <div class="hidden sm:flex items-center space-x-4 text-[10px] text-muted">
+      <span>Assets: <strong class="text-dark" id="qsbs-footer-assets">$3.2M</strong></span>
+      <span>Headroom: <strong class="text-dark" id="qsbs-footer-headroom">$46.8M</strong></span>
+      <button onclick="switchTab('qsbs')" class="text-careblue font-bold hover:underline" data-i18n="partner.qsbs.view_report">View Full Report</button>
+    </div>
+  </div>
+</footer>
+
+<!-- ── Authorize Verification Sheet ───────────────────────────── -->
+<div class="cmd-sheet" id="auth-sheet">
+  <div class="cmd-overlay" onclick="closeAuthSheet()"></div>
+  <div class="cmd-panel">
+    <div class="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-6"></div>
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <div class="text-xs font-bold text-muted uppercase tracking-widest mb-1" data-i18n="partner.auth.label">Authorize Verification</div>
+        <div class="font-heading text-xl font-bold text-dark" id="auth-patient-name">Patient</div>
+      </div>
+      <button onclick="closeAuthSheet()" class="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+        <svg class="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="bg-careblue/5 border border-careblue/20 rounded-2xl p-4 mb-5" style="background:rgba(0,186,255,.05)">
+      <div class="text-[10px] font-bold text-careblue uppercase tracking-widest mb-2" data-i18n="partner.auth.meds_to_verify">Medications to Verify</div>
+      <div id="auth-med-list" class="space-y-2"></div>
+    </div>
+
+    <div class="bg-gray-50 rounded-xl p-4 mb-5 flex items-center space-x-3">
+      <div class="w-8 h-8 bg-careblue rounded-full flex items-center justify-center flex-shrink-0">
+        <span class="text-white text-xs font-bold">SK</span>
+      </div>
+      <div>
+        <div class="text-xs font-bold text-dark">Nurse Sarah K. · RN</div>
+        <div class="text-[10px] text-muted" data-i18n="partner.auth.sig_note">Digital signature applied on confirm</div>
+      </div>
+      <div class="ml-auto text-[10px] font-bold text-muted" id="auth-time-label"></div>
+    </div>
+
+    <button onclick="confirmAuthorize()" class="w-full bg-careblue text-white font-bold py-4 rounded-2xl text-base hover:bg-careblue/90 transition-colors flex items-center justify-center space-x-2">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      <span data-i18n="partner.auth.confirm">Confirm &amp; Push Verification</span>
+    </button>
+    <p class="text-[10px] text-center text-muted mt-3" data-i18n="partner.auth.pushed">Status pushed to patient's Now Card via Supabase realtime.</p>
+  </div>
+</div>
+
+<!-- ── Toast ────────────────────────────────────────────────────── -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── QSBS Telemetry (ported from src/infrastructure/telemetry/qsbs.ts) ──
+const GROSS_ASSET_LIMIT = 50_000_000;
+const CURRENT_GROSS_ASSETS = 3_200_000; // $3.2M — early stage
+
+function qsbsCheck(assets) {
+  const isCompliant       = assets < GROSS_ASSET_LIMIT;
+  const remainingHeadroom = GROSS_ASSET_LIMIT - assets;
+  const pct               = (assets / GROSS_ASSET_LIMIT) * 100;
+  let alertLevel = 'safe';
+  if (assets > GROSS_ASSET_LIMIT * 0.9)  alertLevel = 'critical';
+  else if (assets > GROSS_ASSET_LIMIT * 0.75) alertLevel = 'warning';
+  return { isCompliant, remainingHeadroom, pct, alertLevel };
+}
+
+// ─── Patient data (UserPackageState + MedicationInstruction schema) ──
+const PATIENTS = [
+  {
+    id:'p1', alias:'Patient A', code:'IVF-2847', initials:'A', color:'bg-careblue',
+    packageType:'IVF', phase:'Ovarian Stimulation', cycleDay:6,
+    nextInjection:'21:00',
+    meds:[
+      { name:'Gonal-F',   dosage:'225 IU', isVerified:true  },
+      { name:'Cetrotide', dosage:'0.25mg', isVerified:true  }
+    ],
+    syncStatus:'verified', pharmacy:'Walgreens Specialty', lastSync:'18:45',
+    packageStatus:'Lending Approved', lender:'ARC Finance', medBundle:'Paid',
+    insurance:'Cigna · Auth #7823', nurseAssigned:'Sarah K.'
+  },
+  {
+    id:'p2', alias:'Patient B', code:'IVF-3104', initials:'B', color:'bg-violet-400',
+    packageType:'IVF', phase:'Ovarian Stimulation', cycleDay:4,
+    nextInjection:'21:00',
+    meds:[
+      { name:'Menopur',  dosage:'75 IU',  isVerified:false },
+      { name:'Gonal-F',  dosage:'300 IU', isVerified:true  }
+    ],
+    syncStatus:'pending', pharmacy:'Rite Aid Specialty', lastSync:'17:30',
+    packageStatus:'Lending Approved', lender:'Prosper Healthcare', medBundle:'Pending',
+    insurance:'Aetna · Auth #4411', nurseAssigned:'Sarah K.'
+  },
+  {
+    id:'p3', alias:'Patient C', code:'IVF-2991', initials:'C', color:'bg-rose-400',
+    packageType:'IVF', phase:'Ovarian Stimulation', cycleDay:8,
+    nextInjection:'20:30',
+    meds:[
+      { name:'Follistim', dosage:'300 IU', isVerified:false },
+      { name:'Cetrotide', dosage:'0.25mg', isVerified:false }
+    ],
+    syncStatus:'critical', pharmacy:'CVS Specialty', lastSync:'14:00',
+    packageStatus:'Insurance Pending', lender:'N/A', medBundle:'Not Paid',
+    insurance:'UHC · Pre-Auth Required', nurseAssigned:'Sarah K.'
+  },
+  {
+    id:'p4', alias:'Patient D', code:'FET-1087', initials:'D', color:'bg-teal-400',
+    packageType:'FET', phase:'Transfer (Fresh/Frozen)', cycleDay:18,
+    nextInjection:'08:00',
+    meds:[
+      { name:'Progesterone', dosage:'1 mL PIO', isVerified:true },
+      { name:'Estrace',      dosage:'2mg',       isVerified:true }
+    ],
+    syncStatus:'verified', pharmacy:'Rite Aid Specialty', lastSync:'19:10',
+    packageStatus:'Fully Paid', lender:'N/A', medBundle:'Paid',
+    insurance:'BCBS · Covered', nurseAssigned:'Sarah K.'
+  },
+  {
+    id:'p5', alias:'Patient E', code:'IUI-0532', initials:'E', color:'bg-amber-400',
+    packageType:'IUI', phase:'Suppression & Prep', cycleDay:3,
+    nextInjection:'09:00',
+    meds:[
+      { name:'Clomid',   dosage:'50mg', isVerified:true  },
+      { name:'Ovidrel',  dosage:'250μg', isVerified:false }
+    ],
+    syncStatus:'pending', pharmacy:'Walgreens Specialty', lastSync:'16:00',
+    packageStatus:'Lending Approved', lender:'Sunfish', medBundle:'Paid',
+    insurance:'Cigna · Auth #9920', nurseAssigned:'Sarah K.'
+  },
+  {
+    id:'p6', alias:'Patient F', code:'EGG-0719', initials:'F', color:'bg-pink-400',
+    packageType:'EggFreezing', phase:'Ovarian Stimulation', cycleDay:3,
+    nextInjection:'21:00',
+    meds:[
+      { name:'Menopur',  dosage:'150 IU', isVerified:false },
+      { name:'Gonal-F',  dosage:'225 IU', isVerified:false }
+    ],
+    syncStatus:'critical', pharmacy:'CVS Specialty', lastSync:'12:00',
+    packageStatus:'Self-Pay', lender:'N/A', medBundle:'Not Paid',
+    insurance:'N/A · Self-Pay', nurseAssigned:'Sarah K.'
+  },
+  {
+    id:'p7', alias:'Patient G', code:'IVF-2760', initials:'G', color:'bg-emerald-400',
+    packageType:'IVF', phase:'The Retrieval', cycleDay:12,
+    nextInjection:'N/A',
+    meds:[
+      { name:'Lupron Trigger', dosage:'40 units', isVerified:true }
+    ],
+    syncStatus:'verified', pharmacy:'Hospital Pharmacy', lastSync:'07:30',
+    packageStatus:'Fully Paid', lender:'N/A', medBundle:'Paid',
+    insurance:'Aetna · Covered', nurseAssigned:'Sarah K.'
+  },
+  {
+    id:'p8', alias:'Patient H', code:'IVF-3251', initials:'H', color:'bg-indigo-400',
+    packageType:'IVF', phase:'Ovarian Stimulation', cycleDay:10,
+    nextInjection:'21:00',
+    meds:[
+      { name:'Gonal-F',   dosage:'150 IU', isVerified:false },
+      { name:'Cetrotide', dosage:'0.25mg', isVerified:true  }
+    ],
+    syncStatus:'pending', pharmacy:'Walgreens Specialty', lastSync:'18:00',
+    packageStatus:'Lending Approved', lender:'ARC Finance', medBundle:'Paid',
+    insurance:'Humana · Auth #3317', nurseAssigned:'Sarah K.'
+  }
+];
+
+// ─── State ────────────────────────────────────────────────────────
+let activeFilter = 'all';
+let selectedRescuePatient = null;
+let authPatientId = null;
+
+// ─── Utility ─────────────────────────────────────────────────────
+function fmt(n) { return new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n); }
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `toast ${type} show`;
+  setTimeout(() => t.className = 'toast', 2800);
+}
+function clockTick() {
+  const d = new Date();
+  document.getElementById('clock-display').textContent =
+    d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+}
+
+// ─── Pulse indicator HTML ─────────────────────────────────────────
+const PULSE = {
+  verified: `<div class="w-2.5 h-2.5 bg-careblue rounded-full pulse-blue flex-shrink-0"></div>`,
+  pending:  `<div class="w-2.5 h-2.5 bg-careyellow rounded-full pulse-yellow flex-shrink-0"></div>`,
+  critical: `<div class="w-2.5 h-2.5 bg-red-500 rounded-full pulse-red flex-shrink-0"></div>`
+};
+const STATUS_BADGE = {
+  get verified() { return `<span class="badge bg-careblue/10 text-careblue border border-careblue/25">${t('partner.filter.verified')}</span>`; },
+  get pending()  { return `<span class="badge bg-careyellow/40 text-dark border border-careyellow/60">${t('partner.filter.pending')}</span>`; },
+  get critical() { return `<span class="badge bg-red-50 text-red-600 border border-red-200">${t('partner.filter.critical')}</span>`; }
+};
+
+// ─── Render: Med-Sync Grid ─────────────────────────────────────────
+function renderGrid(filter) {
+  const tbody = document.getElementById('patient-grid');
+  const list  = PATIENTS.filter(p => filter === 'all' || p.syncStatus === filter);
+  tbody.innerHTML = list.map(p => {
+    const isCrit = p.syncStatus === 'critical';
+    const medHtml = p.meds.map(m =>
+      `<div class="flex items-center space-x-1.5">
+        <div class="w-1.5 h-1.5 rounded-full flex-shrink-0 ${m.isVerified?'bg-careblue':'bg-careyellow'}"></div>
+        <span class="text-xs text-dark font-medium">${m.name} <span class="text-muted font-normal">${m.dosage}</span></span>
+       </div>`).join('');
+    const timeLabel = p.nextInjection === 'N/A' ? '<span class="text-muted text-xs">Post-op</span>' :
+      `<span class="text-xs font-bold ${isCrit?'text-red-600':'text-dark'}">${p.nextInjection}</span>`;
+    return `
+      <tr class="${isCrit?'critical-row':''}" id="row-${p.id}">
+        <td>${PULSE[p.syncStatus]}</td>
+        <td>
+          <div class="flex items-center space-x-2.5">
+            <div class="w-8 h-8 ${p.color} rounded-xl flex items-center justify-center flex-shrink-0">
+              <span class="text-white text-xs font-bold">${p.initials}</span>
+            </div>
+            <div>
+              <div class="text-sm font-bold text-dark">${p.alias}</div>
+              <div class="text-[10px] text-muted font-mono">#${p.code}</div>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="text-xs font-bold text-dark">${p.phase}</div>
+          <div class="text-[10px] text-muted">Day ${p.cycleDay} · ${p.packageType}</div>
+        </td>
+        <td>${timeLabel}</td>
+        <td><div class="space-y-1">${medHtml}</div></td>
+        <td><div class="text-xs text-dark font-medium">${p.pharmacy}</div><div class="text-[10px] text-muted">Last: ${p.lastSync}</div></td>
+        <td>${STATUS_BADGE[p.syncStatus]}</td>
+        <td>
+          <div class="flex items-center space-x-2">
+            <button onclick="openAuthSheet('${p.id}')"
+              class="text-xs font-bold text-careblue bg-careblue/8 border border-careblue/20 px-2.5 py-1.5 rounded-lg hover:bg-careblue hover:text-white transition-colors whitespace-nowrap" style="background:rgba(0,186,255,.06)" id="auth-btn-${p.id}">
+              ${t('partner.authorize')}
+            </button>
+            <button onclick="quickRescue('${p.id}')"
+              class="text-xs font-bold text-muted bg-gray-100 border border-gray-200 px-2.5 py-1.5 rounded-lg hover:bg-dark hover:text-white hover:border-dark transition-colors whitespace-nowrap">
+              ${t('partner.rescue_btn')}
+            </button>
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function filterPatients(f) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    const on = b.dataset.filter === f;
+    b.className = on
+      ? 'filter-btn active px-3 py-1.5 text-xs font-bold text-careblue border-l border-gray-200 first:border-0'
+      : 'filter-btn px-3 py-1.5 text-xs font-bold text-muted border-l border-gray-200 first:border-0';
+  });
+  renderGrid(f);
+}
+
+function refreshGrid() {
+  const btn = document.getElementById('refresh-btn').querySelector('svg');
+  btn.classList.add('spin');
+  setTimeout(() => {
+    btn.classList.remove('spin');
+    document.getElementById('last-sync-label').textContent = 'Just now';
+    showToast('Grid refreshed', 'blue');
+  }, 900);
+}
+
+// ─── Render: Package State (BIFI Layer) ───────────────────────────
+function renderPackageState() {
+  const PKG_COLOR = { 'Fully Paid':'bg-green-50 border-green-200 text-green-700', 'Lending Approved':'bg-careblue/5 border-careblue/20 text-careblue', 'Insurance Pending':'bg-careyellow/20 border-careyellow/50 text-dark', 'Self-Pay':'bg-gray-50 border-gray-200 text-muted' };
+  const MED_COLOR = { 'Paid':'text-green-600 bg-green-50', 'Pending':'text-dark bg-careyellow/30', 'Not Paid':'text-red-600 bg-red-50' };
+  document.getElementById('package-grid').innerHTML = PATIENTS.map(p => `
+    <div class="bg-white rounded-2xl border border-gray-200 p-5" style="box-shadow:0 2px 8px rgba(0,0,0,.04)">
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="w-9 h-9 ${p.color} rounded-xl flex items-center justify-center flex-shrink-0">
+          <span class="text-white text-sm font-bold">${p.initials}</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-bold text-dark">${p.alias} <span class="text-muted font-mono text-[10px]">#${p.code}</span></div>
+          <div class="text-[10px] text-muted">${p.packageType} · ${p.phase}</div>
+        </div>
+        <span class="badge border ${PKG_COLOR[p.packageStatus]||'bg-gray-50 border-gray-200 text-muted'}">${p.packageStatus}</span>
+      </div>
+      <div class="space-y-2">
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-muted font-medium">Lending</span>
+          <span class="font-bold text-dark">${p.lender||'N/A'}</span>
+        </div>
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-muted font-medium">Med Bundle</span>
+          <span class="font-bold px-2 py-0.5 rounded-full text-[10px] ${MED_COLOR[p.medBundle]||'text-muted'}">${p.medBundle}</span>
+        </div>
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-muted font-medium">Insurance</span>
+          <span class="font-bold text-dark truncate ml-2 text-right">${p.insurance}</span>
+        </div>
+      </div>
+      <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+        <div class="text-[10px] text-muted">Clinical execution: ${p.packageStatus==='Insurance Pending'||p.medBundle==='Not Paid'?'<span class="text-red-500 font-bold">HOLD</span>':'<span class="text-green-600 font-bold">AUTHORIZED</span>'}</div>
+        <button onclick="openAuthSheet('${p.id}')" class="text-[10px] font-bold text-careblue hover:underline">Verify Meds →</button>
+      </div>
+    </div>`).join('');
+}
+
+// ─── Render: Precision Rescue ──────────────────────────────────────
+function renderRescueList() {
+  document.getElementById('rescue-patient-list').innerHTML = PATIENTS.map(p => `
+    <button onclick="selectRescuePatient('${p.id}')" id="rp-${p.id}"
+      class="rescue-pt w-full flex items-center space-x-3 p-3 rounded-xl hover:bg-careblue/5 text-left transition-colors border border-transparent hover:border-careblue/20">
+      <div class="w-8 h-8 ${p.color} rounded-lg flex items-center justify-center flex-shrink-0">
+        <span class="text-white text-xs font-bold">${p.initials}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-xs font-bold text-dark">${p.alias}</div>
+        <div class="text-[10px] text-muted">${p.phase} · Day ${p.cycleDay}</div>
+      </div>
+      ${PULSE[p.syncStatus]}
+    </button>`).join('');
+}
+
+function selectRescuePatient(id) {
+  selectedRescuePatient = id;
+  const p = PATIENTS.find(x => x.id === id);
+  document.querySelectorAll('.rescue-pt').forEach(b => b.classList.remove('bg-careblue/5','border-careblue/20'));
+  const btn = document.getElementById('rp-'+id);
+  btn.classList.add('bg-careblue/5','border-careblue/20');
+  document.getElementById('rescue-recipient').innerHTML =
+    `<span class="font-bold text-dark">${p.alias} (#${p.code})</span> selected — message will override their Now Card immediately.`;
+  document.getElementById('send-rescue-btn').disabled = false;
+}
+
+function setTemplate(el, text) {
+  document.querySelectorAll('.template-btn').forEach(b => b.classList.remove('border-careblue','text-careblue'));
+  el.classList.add('border-careblue','text-careblue');
+  document.getElementById('rescue-message').value = text;
+}
+
+function sendRescue() {
+  if (!selectedRescuePatient) return;
+  const p   = PATIENTS.find(x => x.id === selectedRescuePatient);
+  const msg = document.getElementById('rescue-message').value.trim();
+  if (!msg) { showToast('Enter a message first', ''); return; }
+
+  // Write override to localStorage (dashboard can pick this up)
+  localStorage.setItem('carestate_nurse_rescue', JSON.stringify({
+    patientCode: p.code, patientAlias: p.alias, message: msg,
+    sentAt: new Date().toISOString(), sentBy: 'Nurse Sarah K.'
+  }));
+
+  const btn = document.getElementById('send-rescue-btn');
+  btn.innerHTML = `<svg class="w-4 h-4 spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9"/></svg><span>Sending…</span>`;
+  setTimeout(() => {
+    btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4"/></svg><span>Sent ✓</span>`;
+    btn.className = btn.className.replace('bg-careblue','bg-green-500');
+    showToast(`Rescue sent to ${p.alias}`, 'green');
+    setTimeout(() => {
+      btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg><span>Send Precision Rescue</span>`;
+      btn.className = btn.className.replace('bg-green-500','bg-careblue');
+      document.getElementById('rescue-message').value = '';
+    }, 3000);
+  }, 1200);
+}
+
+function quickRescue(id) {
+  switchTab('rescue');
+  selectRescuePatient(id);
+}
+
+// ─── Render: QSBS Full View ──────────────────────────────────────
+function renderQsbsFull() {
+  const q = qsbsCheck(CURRENT_GROSS_ASSETS);
+  const pct = q.pct.toFixed(1);
+  const barColor = q.alertLevel === 'critical' ? 'bg-red-500' : q.alertLevel === 'warning' ? 'bg-careyellow' : 'bg-careblue';
+  const alertBadge = q.alertLevel === 'critical'
+    ? `<span class="badge bg-red-50 border border-red-200 text-red-600">${t('partner.qsbs.critical')}</span>`
+    : q.alertLevel === 'warning'
+    ? `<span class="badge bg-careyellow/40 border border-careyellow/60 text-dark">${t('partner.qsbs.warning')}</span>`
+    : `<span class="badge bg-green-50 border border-green-200 text-green-600">${t('partner.qsbs.safe')}</span>`;
+
+  document.getElementById('qsbs-full-view').innerHTML = `
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div class="bg-white rounded-2xl border border-gray-200 p-5" style="box-shadow:0 2px 8px rgba(0,0,0,.04)">
+        <div class="text-[10px] font-bold text-muted uppercase tracking-widest mb-2">Current Gross Assets</div>
+        <div class="font-heading text-3xl font-bold text-dark">${fmt(CURRENT_GROSS_ASSETS)}</div>
+        <div class="text-xs text-muted mt-1">As of ${new Date().toLocaleDateString()}</div>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-200 p-5" style="box-shadow:0 2px 8px rgba(0,0,0,.04)">
+        <div class="text-[10px] font-bold text-muted uppercase tracking-widest mb-2">§1202 Threshold</div>
+        <div class="font-heading text-3xl font-bold text-dark">$50,000,000</div>
+        <div class="text-xs text-muted mt-1">Gross asset limit at issuance</div>
+      </div>
+      <div class="bg-white rounded-2xl border border-gray-200 p-5" style="box-shadow:0 2px 8px rgba(0,0,0,.04)">
+        <div class="text-[10px] font-bold text-muted uppercase tracking-widest mb-2">Remaining Headroom</div>
+        <div class="font-heading text-3xl font-bold text-careblue">${fmt(q.remainingHeadroom)}</div>
+        <div class="flex items-center space-x-2 mt-1">${alertBadge}<span class="text-xs text-muted">Compliant</span></div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-200 p-6 mb-5" style="box-shadow:0 2px 8px rgba(0,0,0,.04)">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <div class="text-sm font-bold text-dark">Asset Utilization</div>
+          <div class="text-xs text-muted">${pct}% of $50M threshold used</div>
+        </div>
+        ${alertBadge}
+      </div>
+      <div class="h-3 bg-gray-100 rounded-full overflow-hidden mb-2">
+        <div class="qsbs-bar-fill h-full ${barColor} rounded-full" style="width:${pct}%"></div>
+      </div>
+      <div class="flex justify-between text-[10px] text-muted font-medium">
+        <span>$0</span>
+        <span class="text-careyellow font-bold">⚠ $37.5M warning</span>
+        <span class="text-red-400 font-bold">⚠ $45M critical</span>
+        <span>$50M limit</span>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-200 p-6" style="box-shadow:0 2px 8px rgba(0,0,0,.04)">
+      <div class="text-sm font-bold text-dark mb-4">Threshold Alert Logic <span class="text-[10px] font-normal text-muted ml-2">(QSBSTelemetryService · src/infrastructure/telemetry/qsbs.ts)</span></div>
+      <div class="space-y-3">
+        ${[
+          { label:'Safe Zone', range:'< $37.5M (75%)', color:'bg-careblue', active: q.alertLevel==='safe', desc:'No action required. All stock issuances remain QSBS-eligible.' },
+          { label:'Warning',   range:'$37.5M – $45M (75–90%)', color:'bg-careyellow', active: q.alertLevel==='warning', desc:'Pause non-essential asset additions before next stock issuance.' },
+          { label:'Critical',  range:'> $45M (90%+)', color:'bg-red-500', active: q.alertLevel==='critical', desc:'Halt all issuances. Engage tax counsel immediately.' }
+        ].map(z => `
+          <div class="flex items-start space-x-3 p-3 rounded-xl ${z.active?'bg-gray-50 border border-gray-200':''}">
+            <div class="w-3 h-3 ${z.color} rounded-full mt-0.5 flex-shrink-0"></div>
+            <div class="flex-1">
+              <div class="text-xs font-bold text-dark flex items-center space-x-2">${z.label} <span class="text-muted font-mono font-normal text-[10px]">${z.range}</span> ${z.active?'<span class="text-[9px] font-bold text-careblue bg-careblue/10 px-1.5 py-0.5 rounded-full">CURRENT</span>':''}</div>
+              <div class="text-[10px] text-muted mt-0.5">${z.desc}</div>
+            </div>
+          </div>`).join('')}
+      </div>
+      <div class="mt-5 p-4 bg-green-50 border border-green-200 rounded-xl text-xs text-green-700">
+        <strong>Status: QSBS Compliant.</strong> CareState is eligible for 100% federal capital-gains exclusion under IRC §1202 at current asset levels. Next review: board meeting Q3 2026.
+      </div>
+    </div>`;
+}
+
+// ─── Authorize Sheet ──────────────────────────────────────────────
+function openAuthSheet(id) {
+  authPatientId = id;
+  const p = PATIENTS.find(x => x.id === id);
+  document.getElementById('auth-patient-name').textContent = `${p.alias} · #${p.code}`;
+  document.getElementById('auth-time-label').textContent = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('auth-med-list').innerHTML = p.meds.map(m => `
+    <div class="flex items-center space-x-3">
+      <div class="w-1.5 h-1.5 rounded-full ${m.isVerified?'bg-careblue':'bg-careyellow'}"></div>
+      <span class="text-sm font-bold text-dark">${m.name}</span>
+      <span class="text-xs text-muted">${m.dosage}</span>
+      <span class="ml-auto text-[10px] font-bold ${m.isVerified?'text-careblue':'text-dark bg-careyellow/50 px-1.5 py-0.5 rounded-full'}">${m.isVerified?'Pre-verified':'Needs verify'}</span>
+    </div>`).join('');
+  document.getElementById('auth-sheet').classList.add('open');
+}
+
+function closeAuthSheet() {
+  document.getElementById('auth-sheet').classList.remove('open');
+}
+
+function confirmAuthorize() {
+  const p = PATIENTS.find(x => x.id === authPatientId);
+  if (!p) return;
+
+  // Mark all meds verified in local data
+  p.meds.forEach(m => m.isVerified = true);
+  p.syncStatus = 'verified';
+  p.lastSync = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+
+  // ── Push to patient dashboard via localStorage (simulated Supabase update) ──
+  const protocol = p.meds.map((m, i) => ({
+    id:         `auth_${p.id}_${i}`,
+    name:       m.name,
+    dosage:     m.dosage,
+    time:       p.nextInjection !== 'N/A' ? p.nextInjection : '09:00',
+    method:     'injection',
+    isCritical: true,
+    isVerified: true,
+    notes:      `Authorized by Nurse Sarah K. via Command Center`,
+    verifiedAt: new Date().toISOString(),
+    source:     'nurse_authorization',
+    verifiedBy: 'Nurse Sarah K.'
+  }));
+  localStorage.setItem('carestate_protocol', JSON.stringify(protocol));
+  localStorage.setItem('carestate_nurse_verify', JSON.stringify({
+    patientCode: p.code, verifiedBy:'Nurse Sarah K.', verifiedAt: new Date().toISOString()
+  }));
+
+  closeAuthSheet();
+  renderGrid(activeFilter);
+  updateSidebarCriticalCount();
+  showToast(`${p.alias} verified ✓ · Now Card updated`, 'green');
+
+  // Animate the row briefly
+  const row = document.getElementById('row-'+p.id);
+  if (row) {
+    row.style.background = 'rgba(0,186,255,.06)';
+    setTimeout(() => row.style.background = '', 1500);
+  }
+}
+
+// ─── Tab switching ─────────────────────────────────────────────────
+function switchTab(name) {
+  ['grid','package','rescue','qsbs'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('active', t===name);
+    const nav = document.getElementById('nav-'+t);
+    if (nav) nav.classList.toggle('active', t===name);
+    const mtab = document.getElementById('mtab-'+t);
+    if (mtab) { mtab.className = t===name
+      ? 'mobile-tab flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg bg-careblue text-white'
+      : 'mobile-tab flex-shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg text-muted'; }
+  });
+  if (name === 'qsbs') renderQsbsFull();
+  if (name === 'rescue') renderRescueList();
+}
+
+function updateSidebarCriticalCount() {
+  const n = PATIENTS.filter(p => p.syncStatus === 'critical').length;
+  document.getElementById('critical-badge').textContent = n;
+  document.getElementById('sidebar-critical').textContent = n;
+}
+
+// ─── Init ─────────────────────────────────────────────────────────
+renderGrid('all');
+renderPackageState();
+updateSidebarCriticalCount();
+clockTick();
+setInterval(clockTick, 30000);
+
+// Animate QSBS footer bar on load
+setTimeout(() => {
+  const q = qsbsCheck(CURRENT_GROSS_ASSETS);
+  document.getElementById('qsbs-footer-bar').style.width = q.pct.toFixed(1) + '%';
+  document.getElementById('qsbs-footer-pct').textContent = q.pct.toFixed(1) + '% of $50M';
+  document.getElementById('qsbs-footer-assets').textContent  = fmt(CURRENT_GROSS_ASSETS);
+  document.getElementById('qsbs-footer-headroom').textContent = fmt(q.remainingHeadroom);
+}, 400);
+
+</script>
+<script src="i18n.js"></script>
+<script>
+// ─── i18n re-render callbacks ──────────────────────────────────────
+I18N.onSwitch(function() {
+  renderGrid(activeFilter || 'all');
+  renderPackageState();
+  renderRescueList();
+  updateSidebarCriticalCount();
+  document.querySelectorAll('.filter-btn[data-filter]').forEach(function(btn) {
+    var map = { all:'partner.filter.all', critical:'partner.filter.critical', pending:'partner.filter.pending', verified:'partner.filter.verified' };
+    var key = map[btn.dataset.filter];
+    if (key) btn.textContent = t(key);
+  });
+});
+</body>
+</html>

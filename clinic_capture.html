@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>CareState — In-Clinic Capture</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { careblue:'#00BAFF', careyellow:'#FFED4A', dark:'#1A1A1B', muted:'#4A4A4A' },
+          fontFamily: { sans:['Inter','sans-serif'], heading:['Outfit','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    .app { max-width: 430px; margin: 0 auto; min-height: 100vh; background: #fff; position: relative; overflow: hidden; }
+
+    /* Screen transitions */
+    .screen { position: absolute; inset: 0; background: #fff; transition: opacity .25s ease, transform .25s ease; }
+    .screen.hidden { opacity: 0; pointer-events: none; transform: translateX(20px); }
+
+    /* Scan animation */
+    .scan-line { position: absolute; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, transparent 0%, #00BAFF 40%, #00BAFF 60%, transparent 100%); animation: scanDown 2s linear infinite; }
+    @keyframes scanDown { 0%{top:0;opacity:1} 90%{opacity:1} 100%{top:calc(100% - 2px);opacity:0} }
+
+    /* Mic pulse */
+    .mic-ring { position: absolute; border-radius: 50%; border: 2px solid rgba(0,186,255,.4); animation: micPulse 1.8s ease-out infinite; }
+    .mic-ring:nth-child(2) { animation-delay: .6s; }
+    .mic-ring:nth-child(3) { animation-delay: 1.2s; }
+    @keyframes micPulse { 0%{transform:scale(1);opacity:1} 100%{transform:scale(2.5);opacity:0} }
+
+    /* Processing dots */
+    .dot { display: inline-block; animation: dotBounce .8s ease-in-out infinite; }
+    .dot:nth-child(2){animation-delay:.15s}
+    .dot:nth-child(3){animation-delay:.3s}
+    @keyframes dotBounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+
+    /* Slide confirm */
+    .slide-track { position: relative; background: #F0F9FF; border: 1.5px solid #00BAFF; border-radius: 50px; height: 56px; overflow: hidden; cursor: pointer; }
+    .slide-fill  { position: absolute; left: 0; top: 0; bottom: 0; background: #00BAFF; border-radius: 50px; transition: none; pointer-events: none; width: 56px; }
+    .slide-handle { position: absolute; left: 4px; top: 4px; width: 48px; height: 48px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,.12); z-index: 2; cursor: grab; }
+    .slide-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 1; }
+
+    /* Checkmark draw */
+    .check-path { stroke-dasharray: 60; stroke-dashoffset: 60; animation: drawCheck .5s ease .3s forwards; }
+    @keyframes drawCheck { to { stroke-dashoffset: 0; } }
+
+    /* Peace pulse */
+    .peace-pulse { animation: peacePulse 2.2s ease-in-out infinite; }
+    @keyframes peacePulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,237,74,.65)} 50%{box-shadow:0 0 0 10px rgba(255,237,74,0)} }
+    .pending-pulse { animation: pendingPulse 1.5s ease-in-out infinite; }
+    @keyframes pendingPulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,237,74,.8)} 50%{box-shadow:0 0 0 8px rgba(255,237,74,0)} }
+
+    /* Blue pulse */
+    .blue-pulse { animation: bluePulse 2.2s ease-in-out infinite; }
+    @keyframes bluePulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,186,255,.5)} 50%{box-shadow:0 0 0 8px rgba(0,186,255,0)} }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spin { animation: spin 1s linear infinite; }
+
+    .card-shadow { box-shadow: 0 4px 16px rgba(0,0,0,.06); }
+    .premium-shadow { box-shadow: 0 12px 32px rgba(0,186,255,.12); }
+
+    /* Bottom sheet */
+    .sheet { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%); width: 100%; max-width: 430px; background: #fff; border-radius: 28px 28px 0 0; transition: transform .32s cubic-bezier(.32,.72,0,1); z-index: 80; box-shadow: 0 -8px 40px rgba(0,0,0,.12); }
+    .sheet.open { transform: translateX(-50%) translateY(0); }
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); opacity: 0; pointer-events: none; transition: opacity .28s; z-index: 75; }
+    .overlay.active { opacity: 1; pointer-events: all; }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    .fade-up { animation: fadeUp .35s ease forwards; }
+  </style>
+</head>
+<body class="font-sans antialiased bg-gray-50">
+<div class="app" id="app">
+
+<!-- ════════════ HUB SCREEN ════════════ -->
+<div id="screen-hub" class="screen overflow-y-auto" style="position:relative">
+  <div class="px-5 pt-14 pb-8 min-h-screen">
+
+    <!-- Nav -->
+    <div class="flex items-center justify-between mb-8">
+      <a href="dashboard.html" class="flex items-center space-x-2 text-sm text-muted font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m7-7l-7 7 7 7"/></svg>
+        <span data-i18n="nav.dashboard">Dashboard</span>
+      </a>
+      <div class="flex items-center space-x-1.5">
+        <div class="w-1.5 h-1.5 bg-careblue rounded-full blue-pulse"></div>
+        <span class="text-xs font-bold text-careblue" data-i18n="capture.safe_room_ready">Safe Room Ready</span>
+      </div>
+    </div>
+
+    <div class="mb-8">
+      <p class="text-xs font-bold text-careblue uppercase tracking-[.15em] mb-2" data-i18n="capture.label">In-Clinic Capture</p>
+      <h1 class="font-heading text-3xl font-bold text-dark leading-tight" data-i18n="capture.headline">Capture what your doctor just said.</h1>
+      <p class="text-sm text-muted mt-2 leading-relaxed" data-i18n="capture.subhead">Eliminate instruction amnesia. Everything goes straight to your Safe Room.</p>
+    </div>
+
+    <!-- Mode cards -->
+    <div class="space-y-4 mb-8">
+      <button onclick="go('ocr_scan')"
+        class="w-full bg-dark rounded-3xl p-6 text-left relative overflow-hidden hover:bg-dark/90 transition-colors premium-shadow">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-careblue/10 rounded-full translate-x-8 -translate-y-8 pointer-events-none"></div>
+        <div class="relative z-10">
+          <div class="w-12 h-12 bg-careblue/20 rounded-2xl flex items-center justify-center mb-4">
+            <svg class="w-6 h-6 text-careblue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </div>
+          <div class="font-heading text-xl font-bold text-white mb-1" data-i18n="capture.scan_handout">Scan Handout</div>
+          <div class="text-sm text-gray-400 leading-relaxed" data-i18n="capture.scan_desc">Point at any printed schedule or handout. We extract medications, dosages, and times instantly.</div>
+          <div class="flex items-center space-x-2 mt-4">
+            <span class="text-xs font-bold text-careblue bg-careblue/15 px-2.5 py-1 rounded-full">OCR Engine</span>
+            <span class="text-xs text-gray-500">Powered by Vision API</span>
+          </div>
+        </div>
+      </button>
+
+      <button onclick="go('voice_record')"
+        class="w-full bg-white border border-gray-100 rounded-3xl p-6 text-left card-shadow hover:premium-shadow transition-shadow">
+        <div class="w-12 h-12 bg-careblue/10 rounded-2xl flex items-center justify-center mb-4">
+          <svg class="w-6 h-6 text-careblue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+          </svg>
+        </div>
+        <div class="font-heading text-xl font-bold text-dark mb-1" data-i18n="capture.voice_title">Record Doctor Recap</div>
+        <div class="text-sm text-muted leading-relaxed" data-i18n="capture.voice_desc">Tap record as your doctor speaks. Clinical AI extracts your next best step and any schedule updates.</div>
+        <div class="flex items-center space-x-2 mt-4">
+          <span class="text-xs font-bold text-dark bg-careyellow px-2.5 py-1 rounded-full">AI Summary</span>
+          <span class="text-xs text-muted">Powered by Claude</span>
+        </div>
+      </button>
+    </div>
+
+    <!-- Recent captures -->
+    <div>
+      <div class="text-xs font-bold text-muted uppercase tracking-widest mb-3" data-i18n="capture.recent">Recent Captures</div>
+      <div id="recent-list">
+        <div class="text-sm text-gray-400 text-center py-4" data-i18n="capture.no_captures">No captures yet. Use scan or voice above.</div>
+      </div>
+    </div>
+  </div>
+</div><!-- /hub -->
+
+<!-- ════════════ OCR SCAN SCREEN ════════════ -->
+<div id="screen-ocr_scan" class="screen hidden" style="background:#111">
+  <!-- Top bar -->
+  <div class="absolute top-0 left-0 right-0 z-10 px-5 pt-12 pb-4 flex items-center justify-between">
+    <button onclick="go('hub')" class="text-white/70 flex items-center space-x-1.5">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+    </button>
+    <span class="text-white font-bold text-sm" data-i18n="capture.scan_handout">Scan Handout</span>
+    <div class="w-5"></div>
+  </div>
+
+  <!-- Viewfinder -->
+  <div class="absolute inset-0 flex items-center justify-center">
+    <div class="relative" style="width:280px;height:360px">
+      <!-- Corner markers -->
+      <div class="absolute top-0 left-0 w-8 h-8 border-t-2 border-l-2 border-careblue rounded-tl-lg"></div>
+      <div class="absolute top-0 right-0 w-8 h-8 border-t-2 border-r-2 border-careblue rounded-tr-lg"></div>
+      <div class="absolute bottom-0 left-0 w-8 h-8 border-b-2 border-l-2 border-careblue rounded-bl-lg"></div>
+      <div class="absolute bottom-0 right-0 w-8 h-8 border-b-2 border-r-2 border-careblue rounded-br-lg"></div>
+      <!-- Scan line -->
+      <div class="scan-line"></div>
+      <!-- Mock document -->
+      <div class="absolute inset-4 bg-white/8 rounded-lg flex flex-col justify-center items-center space-y-2 opacity-30">
+        <div class="w-32 h-2 bg-white rounded"></div>
+        <div class="w-24 h-2 bg-white rounded"></div>
+        <div class="w-28 h-2 bg-white rounded mt-2"></div>
+        <div class="w-20 h-2 bg-white rounded"></div>
+        <div class="w-28 h-2 bg-white rounded mt-2"></div>
+        <div class="w-24 h-2 bg-white rounded"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Instruction -->
+  <div class="absolute bottom-32 left-0 right-0 text-center px-8">
+    <p class="text-white/70 text-sm">Align your clinical handout within the frame, then tap to capture.</p>
+  </div>
+
+  <!-- Capture button -->
+  <div class="absolute bottom-16 left-0 right-0 flex justify-center">
+    <button onclick="startOCR()"
+      class="w-20 h-20 bg-careblue rounded-full flex items-center justify-center premium-shadow active:scale-95 transition-transform">
+      <div class="w-14 h-14 bg-white rounded-full flex items-center justify-center">
+        <svg class="w-7 h-7 text-careblue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      </div>
+    </button>
+  </div>
+</div><!-- /ocr_scan -->
+
+<!-- ════════════ OCR PROCESSING SCREEN ════════════ -->
+<div id="screen-ocr_processing" class="screen hidden flex-col items-center justify-center" style="display:none">
+  <div class="flex flex-col items-center justify-center min-h-screen px-8 text-center">
+    <div class="w-16 h-16 border-3 border-careblue/20 border-t-careblue rounded-full spin mb-8" style="border-width:3px"></div>
+    <div class="font-heading text-xl font-bold text-dark mb-3" data-i18n="capture.ai_processing">Analyzing handout</div>
+    <div id="ocr-progress-msg" class="text-sm text-muted transition-all duration-300">Detecting document edges...</div>
+    <div class="mt-6 w-48 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+      <div id="ocr-progress-bar" class="h-full bg-careblue rounded-full transition-all duration-500" style="width:0%"></div>
+    </div>
+  </div>
+</div><!-- /ocr_processing -->
+
+<!-- ════════════ OCR REVIEW SCREEN (Precision Review) ════════════ -->
+<div id="screen-ocr_review" class="screen hidden overflow-y-auto" style="position:relative">
+  <div class="px-5 pt-14 pb-28 min-h-screen">
+    <!-- Nav -->
+    <div class="flex items-center justify-between mb-6">
+      <button onclick="go('hub')" class="flex items-center space-x-1.5 text-sm text-muted font-medium">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m7-7l-7 7 7 7"/></svg>
+        <span>Re-scan</span>
+      </button>
+      <span class="text-xs font-bold text-careblue uppercase tracking-wider" data-i18n="capture.precision_review">Precision Review</span>
+      <div class="w-12"></div>
+    </div>
+
+    <!-- Header -->
+    <div class="mb-6">
+      <h2 class="font-heading text-2xl font-bold text-dark mb-1" data-i18n="capture.review_title">Review Extracted Data</h2>
+      <p class="text-sm text-muted" data-i18n="capture.review_desc">Verify each instruction before saving to your Safe Room. Tap any card to edit.</p>
+    </div>
+
+    <!-- Extraction summary badge -->
+    <div class="flex items-center space-x-2 bg-careblue/8 border border-careblue/20 rounded-2xl px-4 py-3 mb-5" style="background:rgba(0,186,255,.06)">
+      <svg class="w-4 h-4 text-careblue flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      <span class="text-sm font-bold text-careblue" id="extract-count">4 instructions extracted</span>
+      <span class="text-xs text-muted ml-auto">IVF · Ovarian Stimulation</span>
+    </div>
+
+    <!-- Extracted med cards -->
+    <div id="review-cards" class="space-y-3 mb-5"></div>
+
+    <!-- Add instruction -->
+    <button onclick="addInstruction()"
+      class="w-full border-2 border-dashed border-gray-200 rounded-2xl p-4 flex items-center justify-center space-x-2 text-muted hover:border-careblue hover:text-careblue transition-colors mb-6">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+      <span class="text-sm font-bold" data-i18n="capture.add_manual">Add instruction manually</span>
+    </button>
+  </div>
+
+  <!-- Slide to confirm (fixed bottom) -->
+  <div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/95 backdrop-blur border-t border-gray-100 px-5 py-4 z-20">
+    <div class="slide-track w-full" id="slide-track">
+      <div class="slide-fill" id="slide-fill"></div>
+      <div class="slide-handle" id="slide-handle">
+        <svg class="w-5 h-5 text-careblue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+      </div>
+      <div class="slide-label" id="slide-label">
+        <span class="text-sm font-bold text-careblue ml-12" data-i18n="capture.slide_to_save">Slide to save to Safe Room</span>
+      </div>
+    </div>
+    <p class="text-xs text-center text-muted mt-2" data-i18n="capture.encrypt_note">AES-256 encrypted · Loop Closer will ping your pharmacy</p>
+  </div>
+</div><!-- /ocr_review -->
+
+<!-- ════════════ VOICE RECORD SCREEN ════════════ -->
+<div id="screen-voice_record" class="screen hidden">
+  <div class="flex flex-col items-center justify-between min-h-screen px-5 py-12">
+    <!-- Header -->
+    <div class="w-full flex items-center justify-between">
+      <button onclick="go('hub')" class="flex items-center space-x-1.5 text-sm text-muted">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m7-7l-7 7 7 7"/></svg>
+        <span>Back</span>
+      </button>
+      <span class="text-xs font-bold text-muted uppercase tracking-wider" data-i18n="capture.record_recap">Record Recap</span>
+      <div class="w-14"></div>
+    </div>
+
+    <!-- Status text -->
+    <div class="text-center">
+      <div id="record-status-text" class="font-heading text-2xl font-bold text-dark mb-2" data-i18n="capture.record_title">Record your doctor's instructions</div>
+      <div id="record-sub-text" class="text-sm text-muted max-w-xs" data-i18n="capture.record_sub">Tap the mic and speak freely. Clinical AI will extract your next steps.</div>
+    </div>
+
+    <!-- Mic button with pulse rings -->
+    <div class="relative flex items-center justify-center" style="width:160px;height:160px">
+      <div id="ring1" class="mic-ring hidden" style="width:160px;height:160px;left:0;top:0"></div>
+      <div id="ring2" class="mic-ring hidden" style="width:160px;height:160px;left:0;top:0"></div>
+      <div id="ring3" class="mic-ring hidden" style="width:160px;height:160px;left:0;top:0"></div>
+      <button id="mic-btn" onclick="toggleRecord()"
+        class="relative z-10 w-24 h-24 bg-careblue rounded-full flex items-center justify-center premium-shadow active:scale-95 transition-transform">
+        <svg id="mic-icon" class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Timer -->
+    <div id="record-timer" class="text-3xl font-heading font-bold text-dark tabular-nums invisible">0:00</div>
+
+    <!-- Transcript preview -->
+    <div id="transcript-preview" class="w-full bg-gray-50 rounded-2xl p-4 min-h-16 max-h-28 overflow-hidden invisible">
+      <p id="transcript-text" class="text-sm text-muted leading-relaxed italic"></p>
+    </div>
+  </div>
+</div><!-- /voice_record -->
+
+<!-- ════════════ VOICE PROCESSING SCREEN ════════════ -->
+<div id="screen-voice_processing" class="screen hidden">
+  <div class="flex flex-col items-center justify-center min-h-screen px-8 text-center">
+    <div class="w-16 h-16 border-3 border-careblue/20 border-t-careblue rounded-full spin mb-6" style="border-width:3px"></div>
+    <div class="font-heading text-xl font-bold text-dark mb-2" data-i18n="capture.ai_processing">Clinical AI is processing</div>
+    <p class="text-sm text-muted mb-2"><span data-i18n="capture.ai_extracting">Extracting your next best step</span><span class="dot">.</span><span class="dot">.</span><span class="dot">.</span></p>
+    <p class="text-xs text-gray-400" data-i18n="capture.ai_note">Powered by Claude · Secure · Not stored</p>
+  </div>
+</div><!-- /voice_processing -->
+
+<!-- ════════════ VOICE SUMMARY SCREEN ════════════ -->
+<div id="screen-voice_summary" class="screen hidden overflow-y-auto" style="position:relative">
+  <div class="px-5 pt-14 pb-8 min-h-screen">
+    <div class="flex items-center justify-between mb-6">
+      <button onclick="go('hub')" class="flex items-center space-x-1.5 text-sm text-muted">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m7-7l-7 7 7 7"/></svg>
+        <span>Discard</span>
+      </button>
+      <span class="text-xs font-bold text-careblue uppercase tracking-wider">AI Summary</span>
+      <div class="w-14"></div>
+    </div>
+
+    <!-- Next Best Step card -->
+    <div class="bg-careyellow rounded-3xl p-6 mb-5 relative overflow-hidden">
+      <div class="absolute top-0 right-0 opacity-10 -translate-y-2 translate-x-2">
+        <svg class="w-24 h-24" fill="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      </div>
+      <div class="text-xs font-bold text-dark/60 uppercase tracking-widest mb-3" data-i18n="capture.next_best_step">Next Best Step</div>
+      <p id="voice-next-step" class="font-heading text-base font-bold text-dark leading-snug"></p>
+    </div>
+
+    <!-- Extracted actions -->
+    <div class="mb-6">
+      <div class="text-xs font-bold text-muted uppercase tracking-widest mb-3" data-i18n="capture.extracted_actions">Extracted Actions</div>
+      <div id="voice-actions" class="space-y-2.5"></div>
+    </div>
+
+    <!-- Transcript (collapsed) -->
+    <div class="bg-gray-50 rounded-2xl p-4 mb-6">
+      <button onclick="toggleTranscript()" class="w-full flex items-center justify-between text-xs font-bold text-muted uppercase tracking-wider">
+        <span data-i18n="capture.full_transcript">Full Transcript</span>
+        <svg id="transcript-chevron" class="w-4 h-4 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+      <div id="transcript-full" class="hidden mt-3">
+        <p id="transcript-full-text" class="text-xs text-muted leading-relaxed italic"></p>
+      </div>
+    </div>
+
+    <!-- Actions -->
+    <button onclick="saveVoice()"
+      class="w-full bg-careblue text-white font-bold py-4 rounded-2xl text-base hover:bg-careblue/90 transition-colors mb-3">
+      <span data-i18n="capture.add_to_protocol">Add to My Protocol</span>
+    </button>
+    <button onclick="go('hub')" class="w-full text-sm text-muted text-center py-2" data-i18n="capture.dismiss">Dismiss without saving</button>
+  </div>
+</div><!-- /voice_summary -->
+
+<!-- ════════════ SAVE CONFIRM SCREEN ════════════ -->
+<div id="screen-save_confirm" class="screen hidden overflow-y-auto" style="position:relative">
+  <div class="px-5 pt-14 pb-8 min-h-screen">
+
+    <!-- Success animation -->
+    <div class="text-center mb-8">
+      <div class="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-5">
+        <svg class="w-10 h-10" viewBox="0 0 40 40" fill="none">
+          <path class="check-path" d="M8 20 L16 28 L32 12" stroke="#10B981" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <div class="font-heading text-2xl font-bold text-dark mb-2" data-i18n="capture.saved">Saved to Safe Room</div>
+      <div class="flex items-center justify-center space-x-2">
+        <svg class="w-3.5 h-3.5 text-careblue" fill="currentColor" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        <span class="text-xs font-bold text-muted uppercase tracking-widest">AES-256 Encrypted · HIPAA Safe Room</span>
+      </div>
+    </div>
+
+    <!-- Loop Closer results -->
+    <div class="bg-white border border-gray-100 rounded-2xl p-5 card-shadow mb-5">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-xs font-bold text-muted uppercase tracking-widest" data-i18n="capture.loop_sync">Loop Closer — Pharmacy Sync</span>
+        <div id="loop-overall-status" class="flex items-center space-x-1.5">
+          <svg class="w-4 h-4 text-careblue spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <span class="text-xs font-bold text-careblue">Pinging…</span>
+        </div>
+      </div>
+      <div id="loop-results" class="space-y-3"></div>
+    </div>
+
+    <!-- Bridge Rx alert (hidden initially) -->
+    <div id="bridge-rx-alert" class="hidden bg-careyellow/15 border border-careyellow/50 rounded-2xl p-5 mb-5">
+      <div class="flex items-start space-x-3">
+        <div class="w-8 h-8 bg-careyellow/50 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5">
+          <svg class="w-4 h-4 text-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div class="flex-1">
+          <div class="text-sm font-bold text-dark mb-1">Bridge Rx Protocol Activated</div>
+          <p class="text-xs text-muted leading-relaxed">Menopur 75 IU not confirmed by specialty pharmacy. We're routing to a local backup pharmacy for tonight's dose.</p>
+          <button class="mt-3 text-xs font-bold text-dark bg-careyellow px-3 py-1.5 rounded-lg">View Backup Location →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Verified Seal activation card -->
+    <div class="bg-careyellow/15 border border-careyellow/50 rounded-2xl p-5 mb-5 fade-up" style="animation-delay:.3s">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center space-x-2 bg-careyellow px-3 py-1.5 rounded-full peace-pulse">
+          <div class="w-2 h-2 bg-dark rounded-full"></div>
+          <span class="text-xs font-bold text-dark uppercase tracking-wider" data-i18n="capture.verified_seal">Verified Seal Active</span>
+        </div>
+        <svg class="w-4 h-4 text-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+      </div>
+      <p class="text-sm text-dark font-medium leading-relaxed">Your clinical handout has been verified and imported. Your Now Card is now showing <strong>tonight's confirmed protocol.</strong></p>
+    </div>
+
+    <!-- Return to dashboard -->
+    <a href="dashboard.html"
+      class="block w-full text-center bg-careblue text-white font-bold py-4 rounded-2xl text-base hover:bg-careblue/90 transition-colors flex items-center justify-center space-x-2">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span data-i18n="capture.view_now_card">View Now Card →</span>
+    </a>
+    <p class="text-xs text-center text-muted mt-3">Verified protocol active · Clinic + Pharmacy in sync.</p>
+  </div>
+</div><!-- /save_confirm -->
+
+<!-- ════════════ EDIT SHEET ════════════ -->
+<div id="overlay" class="overlay" onclick="closeEditSheet()"></div>
+<div id="edit-sheet" class="sheet">
+  <div class="p-5">
+    <div class="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5"></div>
+    <div class="text-xs font-bold text-muted uppercase tracking-widest mb-4">Edit Instruction</div>
+    <div class="space-y-3 mb-5">
+      <div>
+        <label class="text-xs font-bold text-dark block mb-1">Medication Name</label>
+        <input id="edit-name" type="text" class="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-sm font-medium text-dark focus:outline-none focus:border-careblue transition-colors" />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-xs font-bold text-dark block mb-1">Dosage</label>
+          <input id="edit-dosage" type="text" class="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-sm font-medium text-dark focus:outline-none focus:border-careblue transition-colors" />
+        </div>
+        <div>
+          <label class="text-xs font-bold text-dark block mb-1">Time (HH:MM)</label>
+          <input id="edit-time" type="text" placeholder="21:00" class="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-sm font-medium text-dark focus:outline-none focus:border-careblue transition-colors" />
+        </div>
+      </div>
+      <div>
+        <label class="text-xs font-bold text-dark block mb-1">Method</label>
+        <select id="edit-method" class="w-full border border-gray-200 rounded-xl px-3.5 py-3 text-sm font-medium text-dark focus:outline-none focus:border-careblue transition-colors bg-white">
+          <option value="injection">Injection</option>
+          <option value="oral">Oral</option>
+          <option value="topical">Topical</option>
+        </select>
+      </div>
+      <div class="flex items-center space-x-3">
+        <input id="edit-critical" type="checkbox" class="w-4 h-4 accent-careblue" />
+        <label class="text-sm font-medium text-dark">Mark as critical (triggers SOS bridge if unverified)</label>
+      </div>
+    </div>
+    <div class="flex gap-3">
+      <button onclick="deleteCapture()" class="flex-1 bg-red-50 text-red-500 font-bold py-3 rounded-xl text-sm border border-red-100">Delete</button>
+      <button onclick="saveEdit()" class="flex-1 bg-careblue text-white font-bold py-3 rounded-xl text-sm">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+// ─── Mock data (PATH_3_IVF_SCHEMA · Ovarian Stimulation) ──────────
+const OCR_MOCK = [
+  { id:'x1', name:'Follistim AQ',   dosage:'300 IU', time:'21:00', method:'injection', isCritical:true,  confidence:0.94 },
+  { id:'x2', name:'Menopur',        dosage:'75 IU',  time:'21:00', method:'injection', isCritical:true,  confidence:0.87 },
+  { id:'x3', name:'Cetrotide',      dosage:'0.25mg', time:'07:00', method:'injection', isCritical:true,  confidence:0.91 },
+  { id:'x4', name:'Prenatal Vitamin', dosage:'1 tablet', time:'08:00', method:'oral', isCritical:false, confidence:0.98 },
+];
+
+// Mock voice result (simulates Claude summarization of doctor's recap)
+const VOICE_MOCK = {
+  transcript: "So your estrogen is at 892 today, which is exactly where we want it on Day 6. I'm keeping your Follistim at 300 IU but we're adding Cetrotide starting tonight to prevent premature ovulation. Come back Friday morning at 7:30 for your next scan. If things look good we might trigger Saturday night. Your follicles are looking beautiful — 6 over 14mm on the right, 4 on the left.",
+  nextBestStep: "Add Cetrotide 0.25mg to tonight's injection protocol alongside Follistim. Return Friday at 7:30 AM for monitoring scan. Potential trigger shot Saturday — standby for clinic call.",
+  actions: [
+    { type:'medication',  text:"Add Cetrotide 0.25mg to tonight's protocol (9 PM)" },
+    { type:'appointment', text:"Monitoring ultrasound — Friday, 7:30 AM" },
+    { type:'alert',       text:"Trigger shot possible Saturday night — watch for clinic call" },
+    { type:'note',        text:"Estrogen 892 — on track · 10 follicles measuring well" },
+  ]
+};
+
+// Mock pharmacy sync results (InClinicCapture → LoopCloserEngine.auditMedSync)
+const PHARMACY_SYNC = [
+  { name:'Follistim AQ 300 IU', status:'verified',  label:'In-hand · Walgreens Specialty',    delay:600  },
+  { name:'Menopur 75 IU',       status:'pending',   label:'Pending confirmation',              delay:1200 },
+  { name:'Cetrotide 0.25mg',    status:'verified',  label:'Delivered today · 3:14 PM',         delay:900  },
+  { name:'Prenatal Vitamin',    status:'verified',  label:'In-hand · Confirmed',               delay:400  },
+];
+
+// ─── App state ────────────────────────────────────────────────────
+let S = {
+  screen:      'hub',
+  captures:    JSON.parse(JSON.stringify(OCR_MOCK)), // working copy
+  mode:        'ocr',   // 'ocr' | 'voice'
+  editIdx:     null,
+  recording:   false,
+  recSeconds:  0,
+  recTimer:    null,
+  transcriptOpen: false,
+};
+
+// ─── Screen navigation ────────────────────────────────────────────
+function go(screen) {
+  document.querySelectorAll('.screen').forEach(el => {
+    el.classList.add('hidden');
+    el.style.display = '';
+  });
+  const el = document.getElementById(`screen-${screen}`);
+  if (el) { el.classList.remove('hidden'); el.style.display = ''; }
+  S.screen = screen;
+  if (screen === 'ocr_review') { renderReviewCards(); initSlider(); }
+  if (screen === 'hub') renderRecentList();
+}
+
+// ─── Hub: recent captures ─────────────────────────────────────────
+function renderRecentList() {
+  const saved = JSON.parse(localStorage.getItem('carestate_captures') || '[]');
+  const el = document.getElementById('recent-list');
+  if (!saved.length) {
+    el.innerHTML = '<div class="text-sm text-gray-400 text-center py-4">No captures yet.</div>';
+    return;
+  }
+  el.innerHTML = saved.slice(-3).reverse().map(c => `
+    <div class="flex items-center space-x-3 bg-white border border-gray-100 rounded-2xl p-3.5 card-shadow mb-2.5">
+      <div class="w-8 h-8 bg-careblue/10 rounded-xl flex items-center justify-center flex-shrink-0">
+        <svg class="w-4 h-4 text-careblue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          ${c.type==='ocr'
+            ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>'
+            : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"/>'}
+        </svg>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-bold text-dark truncate">${c.type==='ocr' ? `${c.count} instructions scanned` : 'Doctor recap recorded'}</div>
+        <div class="text-xs text-muted">${new Date(c.savedAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}</div>
+      </div>
+      <div class="w-2 h-2 bg-careblue rounded-full flex-shrink-0"></div>
+    </div>`).join('');
+}
+
+// ─── OCR Flow ─────────────────────────────────────────────────────
+function startOCR() {
+  S.mode = 'ocr';
+  go('ocr_processing');
+  const msgs = [
+    { text:'Detecting document edges…', pct:15 },
+    { text:'Extracting text fields…',   pct:40 },
+    { text:'Parsing clinical data…',    pct:65 },
+    { text:'Validating against IVF protocol…', pct:85 },
+    { text:'Building Precision Review…', pct:100 },
+  ];
+  let i = 0;
+  const el = document.getElementById('ocr-progress-msg');
+  const bar = document.getElementById('ocr-progress-bar');
+  const tick = setInterval(() => {
+    if (i >= msgs.length) { clearInterval(tick); setTimeout(() => go('ocr_review'), 300); return; }
+    el.textContent = msgs[i].text;
+    bar.style.width = msgs[i].pct + '%';
+    i++;
+  }, 620);
+}
+
+// ─── OCR Review cards ─────────────────────────────────────────────
+function renderReviewCards() {
+  const el = document.getElementById('review-cards');
+  document.getElementById('extract-count').textContent = `${S.captures.length} instruction${S.captures.length!==1?'s':''} extracted`;
+  el.innerHTML = S.captures.map((c, i) => {
+    const [h,m] = c.time.split(':').map(Number);
+    const dh = h>12?h-12:(h===0?12:h), ap = h>=12?'PM':'AM';
+    const confPct = Math.round(c.confidence * 100);
+    const confColor = confPct >= 90 ? 'bg-careblue' : 'bg-careyellow';
+    const confLabel = confPct >= 90 ? 'text-careblue' : 'text-dark';
+    const lowConf = confPct < 90;
+    return `
+      <div class="bg-white border ${lowConf?'border-careyellow/50':'border-gray-100'} rounded-2xl p-4 card-shadow fade-up" style="animation-delay:${i*0.07}s">
+        <div class="flex items-start justify-between mb-3">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center space-x-2 mb-0.5">
+              <div class="text-base font-bold text-dark">${c.name}</div>
+              ${c.isCritical ? '<span class="text-[10px] font-bold text-careblue bg-careblue/10 px-2 py-0.5 rounded-full">Critical</span>' : ''}
+            </div>
+            <div class="text-sm text-muted capitalize">${c.dosage} · ${c.method} · ${dh}:${String(m).padStart(2,'0')} ${ap}</div>
+            <button onclick="event.stopPropagation();if(window.openLexiconSheet)openLexiconSheet('${c.name.split(' ')[0]}')" class="mt-1.5 flex items-center space-x-1 text-careblue text-[11px] font-bold hover:text-careblue/70 transition-colors">
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+              <span>${window.t ? t('capture.what_is_for') : 'What is this for?'}</span>
+            </button>
+          </div>
+          <button onclick="openEdit(${i})" class="w-8 h-8 bg-gray-50 rounded-xl flex items-center justify-center flex-shrink-0 ml-3">
+            <svg class="w-4 h-4 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+          </button>
+        </div>
+        <div class="flex items-center space-x-2">
+          <div class="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
+            <div class="h-full ${confColor} rounded-full" style="width:${confPct}%"></div>
+          </div>
+          <span class="text-[10px] font-bold ${confLabel}">${confPct}%</span>
+          ${lowConf ? '<span class="text-[10px] text-dark bg-careyellow/60 px-1.5 py-0.5 rounded font-bold">Verify</span>' : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function addInstruction() {
+  S.captures.push({ id:`x${Date.now()}`, name:'', dosage:'', time:'', method:'injection', isCritical:false, confidence:1.0 });
+  openEdit(S.captures.length - 1);
+}
+
+// ─── Edit sheet ───────────────────────────────────────────────────
+function openEdit(idx) {
+  S.editIdx = idx;
+  const c = S.captures[idx];
+  document.getElementById('edit-name').value    = c.name;
+  document.getElementById('edit-dosage').value  = c.dosage;
+  document.getElementById('edit-time').value    = c.time;
+  document.getElementById('edit-method').value  = c.method;
+  document.getElementById('edit-critical').checked = c.isCritical;
+  document.getElementById('edit-sheet').classList.add('open');
+  document.getElementById('overlay').classList.add('active');
+}
+
+function closeEditSheet() {
+  document.getElementById('edit-sheet').classList.remove('open');
+  document.getElementById('overlay').classList.remove('active');
+  if (S.screen === 'ocr_review') renderReviewCards();
+}
+
+function saveEdit() {
+  if (S.editIdx === null) return;
+  S.captures[S.editIdx] = {
+    ...S.captures[S.editIdx],
+    name:       document.getElementById('edit-name').value,
+    dosage:     document.getElementById('edit-dosage').value,
+    time:       document.getElementById('edit-time').value,
+    method:     document.getElementById('edit-method').value,
+    isCritical: document.getElementById('edit-critical').checked,
+    confidence: 1.0,
+  };
+  closeEditSheet();
+}
+
+function deleteCapture() {
+  if (S.editIdx === null) return;
+  S.captures.splice(S.editIdx, 1);
+  S.editIdx = null;
+  closeEditSheet();
+}
+
+// ─── Slide to confirm ─────────────────────────────────────────────
+function initSlider() {
+  const track  = document.getElementById('slide-track');
+  const handle = document.getElementById('slide-handle');
+  const fill   = document.getElementById('slide-fill');
+  const label  = document.getElementById('slide-label');
+  if (!track || !handle) return;
+  let dragging = false, startX = 0, curX = 0;
+
+  function maxX() { return track.offsetWidth - handle.offsetWidth - 8; }
+  function clamp(v) { return Math.max(0, Math.min(v, maxX())); }
+
+  function onStart(x) { dragging = true; startX = x - curX; handle.style.transition = 'none'; fill.style.transition = 'none'; }
+  function onMove(x) {
+    if (!dragging) return;
+    curX = clamp(x - startX);
+    handle.style.left = (4 + curX) + 'px';
+    fill.style.width = (curX + handle.offsetWidth + 4) + 'px';
+    label.style.opacity = Math.max(0, 1 - curX / maxX() * 2);
+    if (curX / maxX() >= 0.88) { dragging = false; confirmSave(); }
+  }
+  function onEnd() {
+    if (!dragging) return;
+    dragging = false;
+    handle.style.transition = 'left .3s ease';
+    fill.style.transition = 'width .3s ease';
+    curX = 0;
+    handle.style.left = '4px';
+    fill.style.width = (handle.offsetWidth + 4) + 'px';
+    label.style.opacity = 1;
+  }
+
+  handle.addEventListener('mousedown',  e => onStart(e.clientX));
+  handle.addEventListener('touchstart', e => onStart(e.touches[0].clientX), {passive:true});
+  document.addEventListener('mousemove',  e => onMove(e.clientX));
+  document.addEventListener('touchmove',  e => onMove(e.touches[0].clientX), {passive:true});
+  document.addEventListener('mouseup',  onEnd);
+  document.addEventListener('touchend', onEnd);
+}
+
+function confirmSave() {
+  const ts = new Date().toISOString();
+
+  // Persist to capture log
+  const saved = JSON.parse(localStorage.getItem('carestate_captures') || '[]');
+  saved.push({ type:'ocr', count:S.captures.length, savedAt:ts, instructions:S.captures });
+  localStorage.setItem('carestate_captures', JSON.stringify(saved));
+
+  // ── OCR → Now Card bridge: write as the active protocol ──────────
+  // Clinical sign-off complete (user slid to confirm); mark all as isVerified:true
+  const protocol = S.captures.map((c, i) => ({
+    id:         c.id || `ocr_${Date.now()}_${i}`,
+    name:       c.name,
+    dosage:     c.dosage,
+    time:       c.time,
+    method:     c.method || 'injection',
+    isCritical: c.isCritical !== false,
+    isVerified: true,
+    notes:      c.notes || 'Captured from clinical handout',
+    verifiedAt: ts,
+    source:     'ocr_capture'
+  }));
+  localStorage.setItem('carestate_protocol', JSON.stringify(protocol));
+
+  go('save_confirm');
+  simulateLoopCloser();
+}
+
+// ─── Voice Flow ───────────────────────────────────────────────────
+let recInterval = null;
+
+function toggleRecord() {
+  if (!S.recording) {
+    // Start recording
+    S.recording = true; S.recSeconds = 0;
+    document.getElementById('record-status-text').textContent = t ? t('capture.record_title') : 'Recording…';
+    document.getElementById('record-sub-text').textContent    = 'Speak naturally. Tap to stop when done.';
+    document.getElementById('record-timer').classList.remove('invisible');
+    document.getElementById('transcript-preview').classList.remove('invisible');
+    document.getElementById('mic-btn').classList.replace('bg-careblue','bg-red-500');
+    document.getElementById('mic-icon').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>';
+    ['ring1','ring2','ring3'].forEach(id => document.getElementById(id).classList.remove('hidden'));
+
+    // Rolling transcript reveal
+    const words = VOICE_MOCK.transcript.split(' ');
+    let wi = 0;
+    recInterval = setInterval(() => {
+      S.recSeconds++;
+      const m = Math.floor(S.recSeconds/60), sec = S.recSeconds%60;
+      document.getElementById('record-timer').textContent = `${m}:${String(sec).padStart(2,'0')}`;
+      // Add 2-3 words to transcript preview
+      const chunk = words.slice(wi, wi+3).join(' ');
+      if (chunk) {
+        const el = document.getElementById('transcript-text');
+        el.textContent += (el.textContent ? ' ' : '') + chunk;
+        wi += 3;
+      }
+      if (S.recSeconds >= 12) stopRecord(); // auto-stop after 12s
+    }, 1000);
+  } else {
+    stopRecord();
+  }
+}
+
+function stopRecord() {
+  S.recording = false;
+  clearInterval(recInterval);
+  ['ring1','ring2','ring3'].forEach(id => document.getElementById(id).classList.add('hidden'));
+  go('voice_processing');
+  setTimeout(() => {
+    go('voice_summary');
+    renderVoiceSummary();
+  }, 2200);
+}
+
+function renderVoiceSummary() {
+  document.getElementById('voice-next-step').textContent = VOICE_MOCK.nextBestStep;
+  document.getElementById('transcript-full-text').textContent = VOICE_MOCK.transcript;
+  const icons = {
+    medication: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>`,
+    appointment: `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>`,
+    alert:       `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>`,
+    note:        `<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>`,
+  };
+  const colors = { medication:'text-careblue bg-careblue/10', appointment:'text-dark bg-careyellow/40', alert:'text-red-500 bg-red-50', note:'text-muted bg-gray-50' };
+  document.getElementById('voice-actions').innerHTML = VOICE_MOCK.actions.map((a,i) => `
+    <div class="flex items-center space-x-3 fade-up" style="animation-delay:${i*0.08}s">
+      <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${colors[a.type]}">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">${icons[a.type]||''}</svg>
+      </div>
+      <span class="text-sm font-medium text-dark leading-snug">${a.text}</span>
+    </div>`).join('');
+
+  // Auto-link contextual terms found in the transcript
+  setTimeout(() => {
+    if (!window.getContextualTerms) return;
+    const found = window.getContextualTerms(VOICE_MOCK.transcript);
+    if (!found.length) return;
+    const container = document.getElementById('voice-actions');
+    const divider = document.createElement('div');
+    divider.className = 'border-t border-gray-100 pt-3 mt-1';
+    divider.innerHTML = `
+      <div class="text-[10px] font-bold text-muted uppercase tracking-widest mb-2">${window.t ? t('capture.terms_in_recap') : 'Terms in This Recap'}</div>
+      <div class="flex flex-wrap gap-2">
+        ${found.map(e => `
+          <button onclick="openLexiconSheet('${e.term}')"
+            class="text-xs font-bold text-careblue bg-careblue/8 border border-careblue/20 px-2.5 py-1 rounded-full hover:bg-careblue/15 transition-colors" style="background:rgba(0,186,255,.06)">
+            ${e.term} ↗
+          </button>`).join('')}
+      </div>`;
+    container.appendChild(divider);
+  }, 100);
+}
+
+function toggleTranscript() {
+  S.transcriptOpen = !S.transcriptOpen;
+  document.getElementById('transcript-full').classList.toggle('hidden', !S.transcriptOpen);
+  document.getElementById('transcript-chevron').style.transform = S.transcriptOpen ? 'rotate(180deg)' : '';
+}
+
+function saveVoice() {
+  const saved = JSON.parse(localStorage.getItem('carestate_captures') || '[]');
+  saved.push({ type:'voice', savedAt:new Date().toISOString(), summary:VOICE_MOCK.nextBestStep });
+  localStorage.setItem('carestate_captures', JSON.stringify(saved));
+  go('save_confirm');
+  simulateLoopCloser();
+}
+
+// ─── Loop Closer Simulation (LoopCloserEngine.auditMedSync) ───────
+function simulateLoopCloser() {
+  const container = document.getElementById('loop-results');
+  container.innerHTML = PHARMACY_SYNC.map(m => `
+    <div id="sync-${m.name.replace(/\s+/g,'_')}" class="flex items-center space-x-3">
+      <div class="w-8 h-8 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
+        <svg class="w-4 h-4 text-gray-400 spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-bold text-dark">${m.name}</div>
+        <div class="text-xs text-muted">Checking…</div>
+      </div>
+      <div class="w-2 h-2 bg-gray-200 rounded-full flex-shrink-0 animate-pulse"></div>
+    </div>`).join('');
+
+  let allDone = 0;
+  PHARMACY_SYNC.forEach(med => {
+    setTimeout(() => {
+      const id = med.name.replace(/\s+/g,'_');
+      const row = document.getElementById(`sync-${id}`);
+      if (!row) return;
+      const isVerified = med.status === 'verified';
+      row.innerHTML = `
+        <div class="w-8 h-8 ${isVerified?'bg-careblue/10':'bg-careyellow/30'} rounded-xl flex items-center justify-center flex-shrink-0">
+          <svg class="w-4 h-4 ${isVerified?'text-careblue':'text-dark'}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            ${isVerified
+              ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>'
+              : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>'}
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-bold text-dark">${med.name}</div>
+          <div class="text-xs ${isVerified?'text-muted':'text-dark font-bold'}">${med.label}</div>
+        </div>
+        <div class="w-2 h-2 rounded-full flex-shrink-0 ${isVerified?'bg-careblue':'bg-careyellow pending-pulse'}"></div>`;
+      allDone++;
+      if (allDone === PHARMACY_SYNC.length) {
+        document.getElementById('loop-overall-status').innerHTML = `
+          <svg class="w-3.5 h-3.5 text-careblue" fill="currentColor" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span class="text-xs font-bold text-careblue">Sync Complete</span>`;
+        // Show Bridge Rx if any pending
+        if (PHARMACY_SYNC.some(m => m.status === 'pending')) {
+          setTimeout(() => document.getElementById('bridge-rx-alert').classList.remove('hidden'), 400);
+        }
+      }
+    }, med.delay);
+  });
+}
+
+// ─── Init ─────────────────────────────────────────────────────────
+go('hub');
+</script>
+
+<!-- ── Bottom Nav ────────────────────────────────────────────────── -->
+<nav id="capture-bottom-nav" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/92 backdrop-blur-md border-t border-gray-100 z-10" style="padding-bottom:env(safe-area-inset-bottom)">
+  <div class="flex justify-around px-2 py-3">
+    <a href="index.html" class="flex flex-col items-center space-y-1">
+      <svg class="w-6 h-6 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span class="text-[9px] font-bold text-muted">Home</span>
+    </a>
+    <a href="dashboard.html" class="flex flex-col items-center space-y-1">
+      <svg class="w-6 h-6 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+      <span class="text-[9px] font-bold text-muted" data-i18n="nav.today">Today</span>
+    </a>
+    <button class="flex flex-col items-center space-y-1">
+      <div class="w-6 h-6 bg-careblue rounded-lg flex items-center justify-center">
+        <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      </div>
+      <span class="text-[9px] font-bold text-careblue" data-i18n="nav.capture">Capture</span>
+    </button>
+    <a href="lexicon.html" class="flex flex-col items-center space-y-1">
+      <svg class="w-6 h-6 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      <span class="text-[9px] font-bold text-muted" data-i18n="nav.lexicon">Lexicon</span>
+    </a>
+  </div>
+</nav>
+
+<script src="i18n.js"></script>
+<script src="lexicon.js"></script>
+<script>
+I18N.onSwitch(function() { if (typeof S !== 'undefined') go(S.screen || 'hub'); });
+</script>
+</body>
+</html>

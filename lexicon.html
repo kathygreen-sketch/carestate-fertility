@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>CareState — Precision Lexicon</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { careblue:'#00BAFF', careyellow:'#FFED4A', dark:'#1A1A1B', muted:'#4A4A4A' },
+          fontFamily: { sans:['Inter','sans-serif'], heading:['Outfit','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { background: #F8FAFB; }
+    .app { max-width: 430px; margin: 0 auto; min-height: 100vh; background: #F8FAFB; }
+
+    /* Entry expand/collapse */
+    .entry-body { max-height: 0; overflow: hidden; transition: max-height .28s ease; }
+    .entry-body.open { max-height: 600px; }
+    .entry-chevron { transition: transform .25s ease; }
+    .entry-chevron.open { transform: rotate(180deg); }
+
+    /* Search clear button */
+    .search-clear { display: none; }
+    .search-clear.visible { display: flex; }
+
+    /* Category section headers */
+    .section-label { letter-spacing: .12em; }
+
+    /* Scrollable content */
+    .scroll-area { padding-top: 128px; padding-bottom: 32px; }
+
+    /* Premium card hover */
+    .lex-card { transition: box-shadow .18s, transform .18s; cursor: pointer; }
+    .lex-card:active { transform: scale(.985); }
+
+    /* Search bar focus ring */
+    .search-input:focus { outline: none; box-shadow: 0 0 0 3px rgba(0,186,255,.18); }
+
+    @keyframes fadeUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    .fade-up { animation: fadeUp .3s ease forwards; }
+
+    /* Side-effect chips */
+    .se-chip { display: inline-flex; align-items: center; }
+
+    /* No results */
+    #no-results { display: none; }
+    #no-results.visible { display: block; }
+  </style>
+</head>
+<body class="font-sans antialiased">
+<div class="app">
+
+<!-- ── Fixed Header ─────────────────────────────────────────────── -->
+<div class="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] z-30 bg-white border-b border-gray-100" style="box-shadow:0 2px 16px rgba(0,0,0,.05)">
+
+  <!-- Nav row -->
+  <div class="h-14 px-5 flex items-center justify-between">
+    <a href="dashboard.html" class="flex items-center space-x-2 text-sm font-medium text-muted">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m7-7l-7 7 7 7"/></svg>
+      <span data-i18n="nav.dashboard">Dashboard</span>
+    </a>
+    <div class="flex items-center space-x-2">
+      <div class="w-6 h-6 bg-careblue rounded-md flex items-center justify-center">
+        <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      </div>
+      <span class="font-heading font-bold text-base tracking-tight text-dark" data-i18n="lex.title">Precision Lexicon</span>
+    </div>
+    <div class="w-16"></div>
+  </div>
+
+  <!-- Search bar -->
+  <div class="px-4 pb-3">
+    <div class="relative">
+      <div class="absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none">
+        <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      </div>
+      <input id="search-input" type="text" placeholder="Search medications, procedures, terms…" data-i18n-placeholder="lex.search_placeholder"
+        class="search-input w-full bg-gray-50 border border-gray-200 rounded-2xl pl-10 pr-10 py-3 text-sm font-medium text-dark placeholder-gray-400 transition-shadow" />
+      <button id="search-clear" onclick="clearSearch()"
+        class="search-clear absolute right-3.5 top-1/2 -translate-y-1/2 w-5 h-5 bg-gray-300 rounded-full items-center justify-center">
+        <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Scroll content ────────────────────────────────────────────── -->
+<div class="scroll-area px-4 space-y-8">
+
+  <!-- Stats bar -->
+  <div class="flex items-center space-x-4 py-1">
+    <div class="flex items-center space-x-1.5">
+      <div class="w-2 h-2 bg-careblue rounded-full"></div>
+      <span class="text-xs font-bold text-careblue">10 Medications</span>
+    </div>
+    <div class="w-px h-3 bg-gray-200"></div>
+    <div class="text-xs font-bold text-muted">6 Procedures</div>
+    <div class="w-px h-3 bg-gray-200"></div>
+    <div class="text-xs font-bold text-muted">5 Terms</div>
+  </div>
+
+  <!-- No results -->
+  <div id="no-results" class="text-center py-12">
+    <div class="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+      <svg class="w-7 h-7 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    </div>
+    <div class="text-sm font-bold text-dark mb-1">No matches found</div>
+    <div class="text-xs text-muted">Try a medication name, acronym, or clinical term.</div>
+  </div>
+
+  <!-- ── Medications ───────────────────────────────────────────────── -->
+  <section id="section-medications">
+    <div class="flex items-center space-x-3 mb-3">
+      <span class="text-[10px] font-bold text-careblue uppercase section-label" data-i18n="lex.medications">Medications</span>
+      <div class="flex-1 h-px bg-careblue/20"></div>
+      <span class="text-[10px] font-bold text-careblue bg-careblue/10 px-2 py-0.5 rounded-full" id="med-count">10</span>
+    </div>
+    <div id="med-list" class="space-y-2"></div>
+  </section>
+
+  <!-- ── Procedures ────────────────────────────────────────────────── -->
+  <section id="section-procedures">
+    <div class="flex items-center space-x-3 mb-3">
+      <span class="text-[10px] font-bold text-dark uppercase section-label" data-i18n="lex.procedures">Procedures</span>
+      <div class="flex-1 h-px bg-gray-200"></div>
+      <span class="text-[10px] font-bold text-muted bg-gray-100 px-2 py-0.5 rounded-full" id="proc-count">6</span>
+    </div>
+    <div id="proc-list" class="space-y-2"></div>
+  </section>
+
+  <!-- ── Clinical Terms ────────────────────────────────────────────── -->
+  <section id="section-terms">
+    <div class="flex items-center space-x-3 mb-3">
+      <span class="text-[10px] font-bold text-muted uppercase section-label" data-i18n="lex.clinical_terms">Clinical Terms</span>
+      <div class="flex-1 h-px bg-gray-200"></div>
+      <span class="text-[10px] font-bold text-muted bg-gray-100 px-2 py-0.5 rounded-full" id="term-count">5</span>
+    </div>
+    <div id="term-list" class="space-y-2"></div>
+  </section>
+
+</div><!-- /scroll-area -->
+
+</div><!-- /app -->
+<script src="lexicon.js"></script>
+<script>
+// ─── Render helpers ────────────────────────────────────────────────
+let _expandedId = null;
+
+function toggle(id) {
+  const body    = document.getElementById('body-' + id);
+  const chevron = document.getElementById('chev-' + id);
+  if (!body) return;
+  const opening = !body.classList.contains('open');
+  // Close previously open
+  if (_expandedId && _expandedId !== id) {
+    const prevBody = document.getElementById('body-' + _expandedId);
+    const prevChev = document.getElementById('chev-' + _expandedId);
+    if (prevBody) prevBody.classList.remove('open');
+    if (prevChev) prevChev.classList.remove('open');
+  }
+  body.classList.toggle('open', opening);
+  chevron.classList.toggle('open', opening);
+  _expandedId = opening ? id : null;
+}
+
+function medCard(m, idx, delay) {
+  const id = 'med-' + idx;
+  const sideEffects = (m.side_effects || []).map(s =>
+    `<span class="se-chip text-xs font-medium text-muted bg-gray-50 border border-gray-200 px-2.5 py-1 rounded-full">${s}</span>`
+  ).join('');
+  return `
+    <div class="lex-card bg-white rounded-2xl overflow-hidden border border-gray-100 fade-up" style="animation-delay:${delay}s;box-shadow:0 2px 12px rgba(0,0,0,.04)" onclick="toggle('${id}')">
+      <div class="px-5 py-4 flex items-center justify-between">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center space-x-2 mb-0.5">
+            <div class="font-heading text-base font-bold text-dark">${m.name}</div>
+            <span class="text-[10px] font-bold text-careblue bg-careblue/10 px-2 py-0.5 rounded-full flex-shrink-0">${m.type.split(' ')[0]}</span>
+          </div>
+          <div class="text-xs text-muted truncate">${m.type}</div>
+        </div>
+        <svg id="chev-${id}" class="entry-chevron w-4 h-4 text-gray-400 flex-shrink-0 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </div>
+      <div id="body-${id}" class="entry-body">
+        <div class="px-5 pb-5 space-y-4 border-t border-gray-50 pt-4">
+          <div>
+            <div class="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5">${window.t ? window.t('lex.definition') : 'Purpose'}</div>
+            <p class="text-sm text-dark leading-relaxed">${m.purpose}</p>
+          </div>
+          ${sideEffects ? `<div>
+            <div class="text-[10px] font-bold text-muted uppercase tracking-widest mb-2">${window.t ? window.t('lex.side_effects') : 'Common Side Effects'}</div>
+            <div class="flex flex-wrap gap-1.5">${sideEffects}</div>
+          </div>` : ''}
+          <div class="flex items-center space-x-3 bg-careblue/5 border border-careblue/15 rounded-xl px-4 py-3">
+            <svg class="w-4 h-4 text-careblue flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            <div>
+              <div class="text-[10px] font-bold text-careblue mb-0.5">${window.t ? window.t('lex.storage') : 'Storage'}</div>
+              <div class="text-xs text-dark">${m.storage}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function procCard(p, idx, delay) {
+  const id = 'proc-' + idx;
+  return `
+    <div class="lex-card bg-white rounded-2xl overflow-hidden border border-gray-100 fade-up" style="animation-delay:${delay}s;box-shadow:0 2px 12px rgba(0,0,0,.04)" onclick="toggle('${id}')">
+      <div class="px-5 py-4 flex items-center justify-between">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center space-x-2 mb-0.5">
+            <div class="font-heading text-base font-bold text-dark">${p.term}</div>
+            ${p.full ? `<span class="text-[10px] font-bold text-muted bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0 hidden sm:inline">Procedure</span>` : ''}
+          </div>
+          ${p.full && p.full !== p.term ? `<div class="text-xs text-muted truncate">${p.full}</div>` : ''}
+        </div>
+        <svg id="chev-${id}" class="entry-chevron w-4 h-4 text-gray-400 flex-shrink-0 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </div>
+      <div id="body-${id}" class="entry-body">
+        <div class="px-5 pb-5 border-t border-gray-50 pt-4">
+          <div class="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5">${window.t ? window.t('lex.definition') : 'Definition'}</div>
+          <p class="text-sm text-dark leading-relaxed">${p.definition}</p>
+        </div>
+      </div>
+    </div>`;
+}
+
+function termCard(t, idx, delay) {
+  const id = 'term-' + idx;
+  return `
+    <div class="lex-card bg-white rounded-2xl overflow-hidden border border-gray-100 fade-up" style="animation-delay:${delay}s;box-shadow:0 2px 12px rgba(0,0,0,.04)" onclick="toggle('${id}')">
+      <div class="px-5 py-4 flex items-center justify-between">
+        <div class="flex-1 min-w-0">
+          <div class="font-heading text-base font-bold text-dark mb-0.5">${t.term}</div>
+          ${t.full ? `<div class="text-xs text-muted truncate">${t.full}</div>` : ''}
+        </div>
+        <svg id="chev-${id}" class="entry-chevron w-4 h-4 text-gray-400 flex-shrink-0 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </div>
+      <div id="body-${id}" class="entry-body">
+        <div class="px-5 pb-5 border-t border-gray-50 pt-4">
+          <div class="text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5">${window.t ? window.t('lex.definition') : 'Definition'}</div>
+          <p class="text-sm text-dark leading-relaxed">${t.definition}</p>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ─── Render all sections ──────────────────────────────────────────
+function renderAll(meds, procs, terms) {
+  const medList  = document.getElementById('med-list');
+  const procList = document.getElementById('proc-list');
+  const termList = document.getElementById('term-list');
+
+  // Meds are defined inline in LEXICON (DATA in lexicon.js uses window.LEXICON)
+  // Use the full LEXICON.medications for display (deduplicated canonical list)
+  const canonMeds = [
+    { name:'Menopur',      type:'Gonadotropin', purpose:'Contains both FSH and LH to stimulate the ovaries to produce multiple eggs.', side_effects:['Headache','Abdominal pain','Injection site reaction'], storage:'Room temperature or refrigerated' },
+    { name:'Gonal-F / Follistim', type:'FSH (Follicle Stimulating Hormone)', purpose:'Pure FSH used to stimulate the development of multiple follicles in the ovaries.', side_effects:['Ovarian hyperstimulation','Headache','Nausea'], storage:'Refrigerated (Follistim) or Room Temp (Gonal-F Redi-ject)' },
+    { name:'Cetrotide / Ganirelix', type:'GnRH Antagonist', purpose:"Prevents premature ovulation (the 'Lead Egg' from releasing early) during stimulation.", side_effects:['Skin irritation at injection site'], storage:'Room temperature' },
+    { name:'Lupron (Leuprolide Acetate)', type:'GnRH Agonist', purpose:"Used for 'Down Regulation' to prevent premature ovulation or as a 'Trigger Shot' to induce final maturation.", side_effects:['Hot flashes','Headache'], storage:'Room temperature' },
+    { name:'Ovidrel / Novarel / Pregnyl', type:'hCG (Human Chorionic Gonadotropin)', purpose:"The 'Trigger Shot'. Induces final maturation of the eggs and prepares them for retrieval.", side_effects:['Abdominal pain','Nausea'], storage:'Refrigerated (Ovidrel) or Room Temp (Novarel)' },
+    { name:'Progesterone (PIO / Endometrin / Crinone)', type:'Progestogen', purpose:'Prepares and maintains the uterine lining for embryo implantation and early pregnancy.', side_effects:['Bloating','Breast tenderness','Mood swings'], storage:'Room temperature' }
+  ];
+  const canonProcs = [
+    { term:'IVF (In Vitro Fertilization)',            definition:'A process where eggs are extracted, fertilized by sperm in a lab, and the resulting embryo is transferred to the uterus.', full:'In Vitro Fertilization' },
+    { term:'IUI (Intrauterine Insemination)',          definition:"A fertility treatment that involves placing sperm inside a woman's uterus to facilitate fertilization.", full:'Intrauterine Insemination' },
+    { term:'ICSI (Intracytoplasmic Sperm Injection)',  definition:'A specialized form of IVF where a single sperm is injected directly into a mature egg.', full:'Intracytoplasmic Sperm Injection' },
+    { term:'PGT-A',                                   definition:'Screening embryos for the correct number of chromosomes before transfer.', full:'Preimplantation Genetic Testing for Aneuploidies' },
+    { term:'FET (Frozen Embryo Transfer)',             definition:'A cycle where a frozen embryo from a previous IVF cycle is thawed and transferred to the uterus.', full:'Frozen Embryo Transfer' },
+    { term:'Egg Retrieval (ER)',                       definition:'A minor surgical procedure to collect mature eggs from the follicles in the ovaries.', full:'Egg Retrieval' }
+  ];
+  const canonTerms = [
+    { term:'Follicle',    definition:'A small, fluid-filled sac in the ovary that contains a developing egg.' },
+    { term:'AMH',         definition:"A hormone marker used to estimate a woman's ovarian reserve (egg count).", full:'Anti-Müllerian Hormone' },
+    { term:'Blastocyst',  definition:'An embryo that has developed for 5 to 6 days after fertilization and is ready for implantation.' },
+    { term:'Stimming (Stimulation)', definition:'The phase of an IVF cycle where injectable medications are used to grow multiple follicles.', full:'Ovarian Stimulation' },
+    { term:'Endometrium', definition:'The lining of the uterus that thickens during the menstrual cycle in preparation for a possible pregnancy.' }
+  ];
+
+  const displayMeds  = meds  || canonMeds;
+  const displayProcs = procs || canonProcs;
+  const displayTerms = terms || canonTerms;
+
+  medList.innerHTML  = displayMeds.map((m,i) => medCard(m, i, i*0.04)).join('');
+  procList.innerHTML = displayProcs.map((p,i) => procCard(p, i, i*0.04)).join('');
+  termList.innerHTML = displayTerms.map((t,i) => termCard(t, i, i*0.04)).join('');
+
+  document.getElementById('med-count').textContent  = displayMeds.length;
+  document.getElementById('proc-count').textContent = displayProcs.length;
+  document.getElementById('term-count').textContent = displayTerms.length;
+
+  document.getElementById('section-medications').style.display = displayMeds.length  ? '' : 'none';
+  document.getElementById('section-procedures').style.display  = displayProcs.length ? '' : 'none';
+  document.getElementById('section-terms').style.display       = displayTerms.length ? '' : 'none';
+
+  const total = displayMeds.length + displayProcs.length + displayTerms.length;
+  document.getElementById('no-results').classList.toggle('visible', total === 0);
+}
+
+// ─── Search ────────────────────────────────────────────────────────
+const CANON_MEDS = [
+  { name:'Menopur',      type:'Gonadotropin', purpose:'Contains both FSH and LH to stimulate the ovaries to produce multiple eggs.', side_effects:['Headache','Abdominal pain','Injection site reaction'], storage:'Room temperature or refrigerated' },
+  { name:'Gonal-F / Follistim', type:'FSH (Follicle Stimulating Hormone)', purpose:'Pure FSH used to stimulate the development of multiple follicles in the ovaries.', side_effects:['Ovarian hyperstimulation','Headache','Nausea'], storage:'Refrigerated (Follistim) or Room Temp (Gonal-F Redi-ject)' },
+  { name:'Cetrotide / Ganirelix', type:'GnRH Antagonist', purpose:"Prevents premature ovulation (the 'Lead Egg' from releasing early) during stimulation.", side_effects:['Skin irritation at injection site'], storage:'Room temperature' },
+  { name:'Lupron (Leuprolide Acetate)', type:'GnRH Agonist', purpose:"Used for 'Down Regulation' to prevent premature ovulation or as a 'Trigger Shot' to induce final maturation.", side_effects:['Hot flashes','Headache'], storage:'Room temperature' },
+  { name:'Ovidrel / Novarel / Pregnyl', type:'hCG (Human Chorionic Gonadotropin)', purpose:"The 'Trigger Shot'. Induces final maturation of the eggs and prepares them for retrieval.", side_effects:['Abdominal pain','Nausea'], storage:'Refrigerated (Ovidrel) or Room Temp (Novarel)' },
+  { name:'Progesterone (PIO / Endometrin / Crinone)', type:'Progestogen', purpose:'Prepares and maintains the uterine lining for embryo implantation and early pregnancy.', side_effects:['Bloating','Breast tenderness','Mood swings'], storage:'Room temperature' }
+];
+const CANON_PROCS = [
+  { term:'IVF (In Vitro Fertilization)',            definition:'A process where eggs are extracted, fertilized by sperm in a lab, and the resulting embryo is transferred to the uterus.', full:'In Vitro Fertilization' },
+  { term:'IUI (Intrauterine Insemination)',          definition:"A fertility treatment that involves placing sperm inside a woman's uterus to facilitate fertilization.", full:'Intrauterine Insemination' },
+  { term:'ICSI (Intracytoplasmic Sperm Injection)',  definition:'A specialized form of IVF where a single sperm is injected directly into a mature egg.', full:'Intracytoplasmic Sperm Injection' },
+  { term:'PGT-A',                                   definition:'Screening embryos for the correct number of chromosomes before transfer.', full:'Preimplantation Genetic Testing for Aneuploidies' },
+  { term:'FET (Frozen Embryo Transfer)',             definition:'A cycle where a frozen embryo from a previous IVF cycle is thawed and transferred to the uterus.', full:'Frozen Embryo Transfer' },
+  { term:'Egg Retrieval (ER)',                       definition:'A minor surgical procedure to collect mature eggs from the follicles in the ovaries.', full:'Egg Retrieval' }
+];
+const CANON_TERMS = [
+  { term:'Follicle',    definition:'A small, fluid-filled sac in the ovary that contains a developing egg.' },
+  { term:'AMH',         definition:"A hormone marker used to estimate a woman's ovarian reserve (egg count).", full:'Anti-Müllerian Hormone' },
+  { term:'Blastocyst',  definition:'An embryo that has developed for 5 to 6 days after fertilization and is ready for implantation.' },
+  { term:'Stimming (Stimulation)', definition:'The phase of an IVF cycle where injectable medications are used to grow multiple follicles.', full:'Ovarian Stimulation' },
+  { term:'Endometrium', definition:'The lining of the uterus that thickens during the menstrual cycle in preparation for a possible pregnancy.' }
+];
+
+function doSearch(q) {
+  if (!q.trim()) { renderAll(); return; }
+  const lower = q.toLowerCase().trim();
+  const match = (s) => (s||'').toLowerCase().includes(lower);
+  const filtMeds  = CANON_MEDS.filter(m => match(m.name) || match(m.type) || match(m.purpose));
+  const filtProcs = CANON_PROCS.filter(p => match(p.term) || match(p.definition) || match(p.full));
+  const filtTerms = CANON_TERMS.filter(t => match(t.term) || match(t.definition) || match(t.full));
+  renderAll(filtMeds, filtProcs, filtTerms);
+}
+
+function clearSearch() {
+  const inp = document.getElementById('search-input');
+  inp.value = '';
+  document.getElementById('search-clear').classList.remove('visible');
+  renderAll();
+  inp.focus();
+}
+
+document.getElementById('search-input').addEventListener('input', function () {
+  const val = this.value;
+  document.getElementById('search-clear').classList.toggle('visible', val.length > 0);
+  doSearch(val);
+});
+
+// ─── Init ─────────────────────────────────────────────────────────
+renderAll();
+
+// Auto-open a term if navigated to via ?term=
+const urlTerm = new URLSearchParams(location.search).get('term');
+if (urlTerm) {
+  document.getElementById('search-input').value = urlTerm;
+  document.getElementById('search-clear').classList.add('visible');
+  doSearch(urlTerm);
+}
+</script>
+<script src="i18n.js"></script>
+<script>
+I18N.onSwitch(function() {
+  // Re-apply placeholder (data-i18n-placeholder on search input)
+  var inp = document.getElementById('search-input');
+  if (inp) inp.placeholder = t('lex.search_placeholder');
+  // Re-render section headers + no-results text
+  renderAll();
+});
+</script>
+</body>
+</html>

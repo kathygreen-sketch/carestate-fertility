@@ -1,0 +1,14 @@
+{
+  "name": "carestate-fertility",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "build": "tsc -b packages/types packages/safe-room packages/qsbs-telemetry",
+    "typecheck": "tsc -b --noEmit",
+    "clean": "find . -name 'dist' -type d -not -path '*/node_modules/*' -exec rm -rf {} +"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

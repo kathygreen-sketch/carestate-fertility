@@ -1,0 +1,8 @@
+{
+  "files": [],
+  "references": [
+    { "path": "packages/types" },
+    { "path": "packages/safe-room" },
+    { "path": "packages/qsbs-telemetry" }
+  ]
+}
