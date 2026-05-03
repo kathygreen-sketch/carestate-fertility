@@ -1,0 +1,6 @@
+{
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "framework": null,
+  "installCommand": "echo 'static site — no install needed'"
+}
