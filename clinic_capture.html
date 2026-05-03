@@ -13,17 +13,19 @@
       theme: {
         extend: {
           colors: { careblue:'#00BAFF', careyellow:'#FFED4A', dark:'#1A1A1B', muted:'#4A4A4A' },
-          fontFamily: { sans:['Inter','sans-serif'], heading:['Outfit','sans-serif'] }
+          fontFamily: { sans:['Inter','sans-serif'], heading:['Outfit','sans-serif'] },
+          maxWidth: { '8xl': '1360px' }
         }
       }
     }
   </script>
   <style>
-    * { -webkit-tap-highlight-color: transparent; }
-    .app { max-width: 430px; margin: 0 auto; min-height: 100vh; background: #fff; position: relative; overflow: hidden; }
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    body { background: #f7f9fc; }
+    .app { position: relative; min-height: calc(100vh - 64px); overflow: hidden; background: #fff; }
 
     /* Screen transitions */
-    .screen { position: absolute; inset: 0; background: #fff; transition: opacity .25s ease, transform .25s ease; }
+    .screen { position: absolute; inset: 0; background: #fff; transition: opacity .25s ease, transform .25s ease; overflow-y: auto; }
     .screen.hidden { opacity: 0; pointer-events: none; transform: translateX(20px); }
 
     /* Scan animation */
@@ -68,9 +70,17 @@
     .card-shadow { box-shadow: 0 4px 16px rgba(0,0,0,.06); }
     .premium-shadow { box-shadow: 0 12px 32px rgba(0,186,255,.12); }
 
-    /* Bottom sheet */
-    .sheet { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%); width: 100%; max-width: 430px; background: #fff; border-radius: 28px 28px 0 0; transition: transform .32s cubic-bezier(.32,.72,0,1); z-index: 80; box-shadow: 0 -8px 40px rgba(0,0,0,.12); }
-    .sheet.open { transform: translateX(-50%) translateY(0); }
+    /* Sheet — centered modal on desktop */
+    .sheet {
+      position: fixed; top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(.96);
+      width: calc(100% - 48px); max-width: 480px;
+      background: #fff; border-radius: 20px;
+      z-index: 80; opacity: 0; pointer-events: none;
+      transition: transform .3s cubic-bezier(.32,.72,0,1), opacity .3s;
+      box-shadow: 0 20px 60px rgba(0,0,0,.15);
+    }
+    .sheet.open { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: all; }
     .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); opacity: 0; pointer-events: none; transition: opacity .28s; z-index: 75; }
     .overlay.active { opacity: 1; pointer-events: all; }
 
@@ -78,24 +88,39 @@
     .fade-up { animation: fadeUp .35s ease forwards; }
   </style>
 </head>
-<body class="font-sans antialiased bg-gray-50">
+<body class="font-sans antialiased">
+
+<!-- ══════════════════ WEB NAV ══════════════════ -->
+<nav class="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-gray-100" style="box-shadow:0 1px 0 #f0f2f6; height:64px">
+  <div class="max-w-8xl mx-auto px-6 md:px-12 h-full flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <a href="index.html" class="w-8 h-8 bg-careblue rounded-lg flex items-center justify-center flex-shrink-0" style="box-shadow:0 4px 12px rgba(0,186,255,.35)">
+        <span class="text-white font-heading font-bold text-sm leading-none">C</span>
+      </a>
+      <div>
+        <span class="font-heading font-bold text-dark text-sm">CareState</span>
+        <span class="text-muted text-xs font-medium ml-2 hidden sm:inline">Clinic Capture</span>
+      </div>
+    </div>
+    <div class="flex items-center space-x-3">
+      <div class="flex items-center space-x-1.5 bg-careblue/8 border border-careblue/20 px-3 py-1.5 rounded-full" style="background:rgba(0,186,255,.06)">
+        <div class="w-1.5 h-1.5 bg-careblue rounded-full blue-pulse"></div>
+        <span class="text-[11px] font-bold text-careblue" data-i18n="capture.safe_room_ready">Safe Room Ready</span>
+      </div>
+      <a href="dashboard.html" class="hidden md:flex items-center space-x-1.5 text-xs font-bold text-muted border border-gray-200 px-3.5 py-2 rounded-xl hover:border-careblue hover:text-careblue transition-colors">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m7-7l-7 7 7 7"/></svg>
+        <span data-i18n="nav.dashboard">Dashboard</span>
+      </a>
+      <a href="lexicon.html" class="hidden md:block text-xs font-bold text-muted hover:text-dark transition-colors">Lexicon</a>
+    </div>
+  </div>
+</nav>
+
 <div class="app" id="app">
 
 <!-- ════════════ HUB SCREEN ════════════ -->
 <div id="screen-hub" class="screen overflow-y-auto" style="position:relative">
-  <div class="px-5 pt-14 pb-8 min-h-screen">
-
-    <!-- Nav -->
-    <div class="flex items-center justify-between mb-8">
-      <a href="dashboard.html" class="flex items-center space-x-2 text-sm text-muted font-medium">
-        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m7-7l-7 7 7 7"/></svg>
-        <span data-i18n="nav.dashboard">Dashboard</span>
-      </a>
-      <div class="flex items-center space-x-1.5">
-        <div class="w-1.5 h-1.5 bg-careblue rounded-full blue-pulse"></div>
-        <span class="text-xs font-bold text-careblue" data-i18n="capture.safe_room_ready">Safe Room Ready</span>
-      </div>
-    </div>
+  <div class="max-w-2xl mx-auto px-6 pt-10 pb-12 min-h-full">
 
     <div class="mb-8">
       <p class="text-xs font-bold text-careblue uppercase tracking-[.15em] mb-2" data-i18n="capture.label">In-Clinic Capture</p>
@@ -213,7 +238,7 @@
 
 <!-- ════════════ OCR REVIEW SCREEN (Precision Review) ════════════ -->
 <div id="screen-ocr_review" class="screen hidden overflow-y-auto" style="position:relative">
-  <div class="px-5 pt-14 pb-28 min-h-screen">
+  <div class="max-w-2xl mx-auto px-6 pt-8 pb-32 min-h-full">
     <!-- Nav -->
     <div class="flex items-center justify-between mb-6">
       <button onclick="go('hub')" class="flex items-center space-x-1.5 text-sm text-muted font-medium">
@@ -249,7 +274,7 @@
   </div>
 
   <!-- Slide to confirm (fixed bottom) -->
-  <div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/95 backdrop-blur border-t border-gray-100 px-5 py-4 z-20">
+  <div class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-2xl bg-white/95 backdrop-blur border-t border-gray-100 px-5 py-4 z-20">
     <div class="slide-track w-full" id="slide-track">
       <div class="slide-fill" id="slide-fill"></div>
       <div class="slide-handle" id="slide-handle">
@@ -317,7 +342,7 @@
 
 <!-- ════════════ VOICE SUMMARY SCREEN ════════════ -->
 <div id="screen-voice_summary" class="screen hidden overflow-y-auto" style="position:relative">
-  <div class="px-5 pt-14 pb-8 min-h-screen">
+  <div class="max-w-2xl mx-auto px-6 pt-8 pb-12 min-h-full">
     <div class="flex items-center justify-between mb-6">
       <button onclick="go('hub')" class="flex items-center space-x-1.5 text-sm text-muted">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 12H5m7-7l-7 7 7 7"/></svg>
@@ -364,7 +389,7 @@
 
 <!-- ════════════ SAVE CONFIRM SCREEN ════════════ -->
 <div id="screen-save_confirm" class="screen hidden overflow-y-auto" style="position:relative">
-  <div class="px-5 pt-14 pb-8 min-h-screen">
+  <div class="max-w-2xl mx-auto px-6 pt-8 pb-12 min-h-full">
 
     <!-- Success animation -->
     <div class="text-center mb-8">
@@ -878,29 +903,6 @@ function simulateLoopCloser() {
 go('hub');
 </script>
 
-<!-- ── Bottom Nav ────────────────────────────────────────────────── -->
-<nav id="capture-bottom-nav" class="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white/92 backdrop-blur-md border-t border-gray-100 z-10" style="padding-bottom:env(safe-area-inset-bottom)">
-  <div class="flex justify-around px-2 py-3">
-    <a href="index.html" class="flex flex-col items-center space-y-1">
-      <svg class="w-6 h-6 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-      <span class="text-[9px] font-bold text-muted">Home</span>
-    </a>
-    <a href="dashboard.html" class="flex flex-col items-center space-y-1">
-      <svg class="w-6 h-6 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
-      <span class="text-[9px] font-bold text-muted" data-i18n="nav.today">Today</span>
-    </a>
-    <button class="flex flex-col items-center space-y-1">
-      <div class="w-6 h-6 bg-careblue rounded-lg flex items-center justify-center">
-        <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-      </div>
-      <span class="text-[9px] font-bold text-careblue" data-i18n="nav.capture">Capture</span>
-    </button>
-    <a href="lexicon.html" class="flex flex-col items-center space-y-1">
-      <svg class="w-6 h-6 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-      <span class="text-[9px] font-bold text-muted" data-i18n="nav.lexicon">Lexicon</span>
-    </a>
-  </div>
-</nav>
 
 <script src="i18n.js"></script>
 <script src="lexicon.js"></script>
