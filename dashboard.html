@@ -778,10 +778,6 @@ function renderQsbsClock() {
   document.getElementById('qsbs-detail').innerHTML = `<div class="pt-3 mt-3 border-t border-black/[.06] space-y-2.5"><div class="flex justify-between text-[10px] text-dark/40 font-medium"><span>Started May 2026</span><span>Exit Window May 2031</span></div><div class="h-1 bg-black/[.07] rounded-full overflow-hidden"><div class="h-full bg-dark/30 rounded-full" style="width:${pct}%"></div></div><div class="flex justify-between"><span class="text-[10px] text-dark/35">Day ${elapsed} of ${totalDays}</span><span class="text-[10px] font-bold text-dark/35">${remaining.toLocaleString()} days to exit</span></div><div class="text-[9px] text-dark/25 pt-1 border-t border-black/[.04] leading-relaxed">QSBS · §1202 QSBS · $120M exit target · CareState Fertility, Inc.</div></div>`;
 }
 
-renderNowCard();
-renderLoopCloser();
-updateNavBadge();
-updateCaptureBtnBadge();
 checkPeacePulse();
 checkRescueOverride();
 if (window.CARE_STATE) {
@@ -795,6 +791,10 @@ if (window.CARE_STATE) {
 <script src="i18n.js"></script>
 <script src="lexicon.js"></script>
 <script>
+renderNowCard();
+renderLoopCloser();
+updateNavBadge();
+updateCaptureBtnBadge();
 I18N.onSwitch(function() { renderNowCard(); renderLoopCloser(); updateNavBadge(); updateCaptureBtnBadge(); });
 </script>
 </body>
