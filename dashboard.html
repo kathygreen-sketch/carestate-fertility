@@ -234,6 +234,7 @@
 
     <!-- Right: main action panel -->
     <div class="space-y-5">
+      <div id="rescue-override" class="hidden mb-4"></div>
       <div id="now-card-slot"></div>
       <div id="loop-closer" class="bg-white border border-gray-100 rounded-2xl p-5 card-shadow"></div>
 
@@ -509,7 +510,7 @@ const S = {
   mode: 'stim', simHour: 21, done: new Set(),
   upOpen: false, loopSyncing: false, confirmMedId: null, site: 'r',
   sos: { open:false, screen:'issues', issue:null, step:0, branch:null },
-  protocolImported: false, protocolTs: null
+  protocolImported: false, protocolTs: null, activeRescue: null
 };
 
 (function loadCapturedProtocol() {
@@ -639,7 +640,9 @@ function setSite(s) {
   document.getElementById('site-l').className = s==='l' ? 'flex-1 py-2.5 rounded-xl border-2 border-careblue bg-careblue/10 text-sm font-bold text-careblue transition-all' : 'flex-1 py-2.5 rounded-xl border-2 border-gray-200 text-sm font-bold text-muted transition-all';
 }
 function completeDose() {
+  const _med = MEDICATIONS.find(m => m.id === S.confirmMedId);
   S.done.add(S.confirmMedId); closeSheet();
+  if (window.CARE_STATE && _med) CARE_STATE.emitLoopClosed(S.confirmMedId, _med.name);
   S.loopSyncing = true; renderLoopCloser();
   const badge = document.getElementById('sync-badge');
   badge.innerHTML = `<svg class="w-3.5 h-3.5 text-careblue spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg><span class="text-xs font-bold text-careblue">${t('dash.syncing')}</span>`;
@@ -736,6 +739,26 @@ function checkPeacePulse() {
 }
 function dismissPeacePulse() { document.getElementById('peace-pulse-toast').classList.add('hidden'); }
 
+function checkRescueOverride() {
+  try {
+    const raw = localStorage.getItem('carestate_nurse_rescue');
+    if (!raw) return;
+    const r = JSON.parse(raw);
+    if (!r || r.patientCode !== 'IVF-2847') return;
+    S.activeRescue = r;
+    const el = document.getElementById('rescue-override');
+    if (!el) return;
+    el.classList.remove('hidden');
+    el.innerHTML = `<div class="bg-careblue/5 border-2 border-careblue rounded-2xl p-5 slide-up"><div class="flex items-center space-x-3 mb-3"><div class="w-9 h-9 bg-careblue rounded-xl flex items-center justify-center flex-shrink-0"><svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg></div><div class="flex-1 min-w-0"><div class="text-[10px] font-bold text-careblue uppercase tracking-widest">Authority Override</div><div class="text-xs text-muted">${r.sentBy || 'Clinical Team'}</div></div><button onclick="dismissRescueOverride()" class="text-muted hover:text-dark transition-colors p-1"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg></button></div><p class="text-sm font-medium text-dark leading-relaxed">${r.message}</p></div>`;
+  } catch(e) {}
+}
+function dismissRescueOverride() {
+  localStorage.removeItem('carestate_nurse_rescue');
+  S.activeRescue = null;
+  const el = document.getElementById('rescue-override');
+  if (el) el.classList.add('hidden');
+}
+
 const QSBS_START = new Date('2026-05-01'), QSBS_EXIT = new Date('2031-05-01');
 function toggleQsbs() {
   const detail = document.getElementById('qsbs-detail'), ch = document.getElementById('qsbs-chevron');
@@ -754,7 +777,16 @@ renderLoopCloser();
 updateNavBadge();
 updateCaptureBtnBadge();
 checkPeacePulse();
+checkRescueOverride();
+if (window.CARE_STATE) {
+  CARE_STATE.onMessage(function(msg) {
+    if (msg.type === 'rescue' && msg.patientCode === 'IVF-2847') {
+      checkRescueOverride();
+    }
+  });
+}
 </script>
+<script src="state.js"></script>
 <script src="i18n.js"></script>
 <script src="lexicon.js"></script>
 <script>

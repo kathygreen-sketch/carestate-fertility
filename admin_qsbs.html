@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareState — QSBS Balance Sheet Telemetry</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { careblue:'#00BAFF', careyellow:'#FFED4A', dark:'#1A1A1B', muted:'#6B7280' },
+          fontFamily: { sans:['Inter','sans-serif'], heading:['Outfit','sans-serif'] }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { background:#0D0F12; color:#E5E7EB; }
+    .card { background:#161A21; border:1px solid rgba(255,255,255,.07); border-radius:16px; }
+    .metric-card { background:rgba(0,186,255,.04); border:1px solid rgba(0,186,255,.12); border-radius:14px; }
+    .zone-safe     { fill: rgba(16,185,129,.15); }
+    .zone-warning  { fill: rgba(255,237,74,.12); }
+    .zone-critical { fill: rgba(239,68,68,.12); }
+    .line-actual   { fill:none; stroke:#00BAFF; stroke-width:2.5; stroke-linejoin:round; stroke-linecap:round; }
+    .line-proj     { fill:none; stroke:rgba(0,186,255,.4); stroke-width:2; stroke-dasharray:6 4; stroke-linejoin:round; stroke-linecap:round; }
+    .dot-actual    { fill:#00BAFF; stroke:#0D0F12; stroke-width:2; }
+    .dot-exit      { fill:#FFED4A; stroke:#0D0F12; stroke-width:2; }
+    .axis-line     { stroke:rgba(255,255,255,.08); stroke-width:1; }
+    .axis-label    { font-family:Inter,sans-serif; font-size:10px; fill:rgba(255,255,255,.35); }
+    .grid-line     { stroke:rgba(255,255,255,.05); stroke-width:1; }
+    .annotation-line { stroke:rgba(255,237,74,.4); stroke-width:1; stroke-dasharray:4 3; }
+    @keyframes fadein { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+    .fadein { animation:fadein .5s ease forwards; }
+    .badge { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700; }
+    .status-dot { width:8px; height:8px; border-radius:50%; background:#10B981; box-shadow:0 0 0 0 rgba(16,185,129,.5); animation:pulse-green 2s ease-in-out infinite; }
+    @keyframes pulse-green { 0%,100%{box-shadow:0 0 0 0 rgba(16,185,129,.5)} 50%{box-shadow:0 0 0 6px rgba(16,185,129,0)} }
+    .qsbs-window-line { stroke:#FFED4A; stroke-width:1.5; stroke-dasharray:5 3; }
+    .qsbs-window-label { font-family:Inter,sans-serif; font-size:9px; fill:#FFED4A; font-weight:700; }
+    table th { font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:rgba(255,255,255,.35); font-weight:700; padding:8px 12px; border-bottom:1px solid rgba(255,255,255,.06); white-space:nowrap; }
+    table td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.04); font-size:12px; }
+    table tr:last-child td { border-bottom:none; }
+  </style>
+</head>
+<body class="font-sans antialiased min-h-screen">
+
+<!-- Top bar -->
+<header class="border-b border-white/5 px-8 py-4 flex items-center justify-between sticky top-0 z-20" style="background:#0D0F12">
+  <div class="flex items-center space-x-4">
+    <a href="index.html" class="w-8 h-8 bg-careblue rounded-lg flex items-center justify-center hover:opacity-75 transition-opacity" title="Home">
+      <span class="text-white font-heading font-bold text-sm">C</span>
+    </a>
+    <div>
+      <div class="font-heading font-bold text-white text-sm leading-none">CareState Fertility</div>
+      <div class="text-[10px] text-white/35 font-medium mt-0.5">QSBS Balance Sheet Telemetry · Internal</div>
+    </div>
+    <div class="hidden md:flex items-center space-x-2 bg-white/4 border border-white/8 px-3 py-1 rounded-full ml-4">
+      <div class="status-dot"></div>
+      <span class="text-[10px] font-bold text-emerald-400">Compliant</span>
+    </div>
+  </div>
+  <div class="flex items-center space-x-4 text-[11px] text-white/40">
+    <span>IRC §1202 · QSBS</span>
+    <span>·</span>
+    <span id="ts-label"></span>
+    <a href="partner_command.html" class="text-careblue hover:text-careblue/70 transition-colors font-bold">Command →</a>
+  </div>
+</header>
+
+<div class="max-w-5xl mx-auto px-6 py-8 space-y-6">
+
+  <!-- Title -->
+  <div class="fadein">
+    <div class="text-[10px] font-bold text-careblue/60 uppercase tracking-[.15em] mb-2">Gross Asset Ceiling Monitor</div>
+    <h1 class="font-heading text-2xl font-bold text-white mb-1">§1202 QSBS Balance Sheet Telemetry</h1>
+    <p class="text-sm text-white/40">$50M gross asset ceiling · $120M exit target · CareState Fertility, Inc.</p>
+  </div>
+
+  <!-- KPI row -->
+  <div class="grid grid-cols-2 md:grid-cols-4 gap-4 fadein" style="animation-delay:.08s">
+    <div class="metric-card p-4">
+      <div class="text-[9px] font-bold text-careblue/60 uppercase tracking-widest mb-2">Current Gross Assets</div>
+      <div class="font-heading text-2xl font-bold text-white">$3.2M</div>
+      <div class="text-[10px] text-white/35 mt-1">May 2026 · Seed</div>
+    </div>
+    <div class="metric-card p-4">
+      <div class="text-[9px] font-bold text-careblue/60 uppercase tracking-widest mb-2">§1202 Threshold</div>
+      <div class="font-heading text-2xl font-bold text-white">$50M</div>
+      <div class="text-[10px] text-emerald-400/80 mt-1">6.4% utilized</div>
+    </div>
+    <div class="metric-card p-4">
+      <div class="text-[9px] font-bold text-careblue/60 uppercase tracking-widest mb-2">Remaining Headroom</div>
+      <div class="font-heading text-2xl font-bold text-careblue">$46.8M</div>
+      <div class="text-[10px] text-white/35 mt-1">Before ceiling breach</div>
+    </div>
+    <div class="metric-card p-4">
+      <div class="text-[9px] font-bold text-careblue/60 uppercase tracking-widest mb-2">Exit Target</div>
+      <div class="font-heading text-2xl font-bold text-careyellow">$120M</div>
+      <div class="text-[10px] text-white/35 mt-1">May 2031 · 5-yr horizon</div>
+    </div>
+  </div>
+
+  <!-- Chart -->
+  <div class="card p-6 fadein" style="animation-delay:.16s">
+    <div class="flex items-center justify-between mb-5">
+      <div>
+        <div class="text-sm font-bold text-white">Gross Asset Growth Trajectory</div>
+        <div class="text-xs text-white/35 mt-0.5">Actual + projected through May 2031</div>
+      </div>
+      <div class="flex items-center space-x-4 text-[10px] text-white/40">
+        <div class="flex items-center space-x-1.5"><div class="w-5 h-0.5 bg-careblue rounded"></div><span>Actual / Forecast</span></div>
+        <div class="flex items-center space-x-1.5"><div class="w-5 h-0.5 border-t-2 border-dashed border-careblue/40 rounded"></div><span>Projected</span></div>
+        <div class="flex items-center space-x-1.5"><div class="w-3 h-3 rounded-full bg-careyellow/80"></div><span>Exit target</span></div>
+      </div>
+    </div>
+
+    <svg id="chart" viewBox="0 0 760 260" class="w-full" style="overflow:visible">
+      <!-- Zone fills -->
+      <!-- Safe zone: $0–$37.5M (y 260–75.5) -->
+      <rect x="50" y="75.5" width="680" height="184.5" class="zone-safe"/>
+      <!-- Warning zone: $37.5M–$45M -->
+      <rect x="50" y="49" width="680" height="26.5" class="zone-warning"/>
+      <!-- Critical zone: $45M–$50M -->
+      <rect x="50" y="30" width="680" height="19" class="zone-critical"/>
+
+      <!-- Grid lines (horizontal at 0, 10M, 20M, 30M, 40M, 50M) -->
+      <line x1="50" y1="260" x2="730" y2="260" class="grid-line"/>
+      <line x1="50" y1="208" x2="730" y2="208" class="grid-line"/>
+      <line x1="50" y1="156" x2="730" y2="156" class="grid-line"/>
+      <line x1="50" y1="104" x2="730" y2="104" class="grid-line"/>
+      <line x1="50" y1="52"  x2="730" y2="52"  class="grid-line"/>
+      <line x1="50" y1="0"   x2="730" y2="0"   class="grid-line"/>
+
+      <!-- Y axis labels ($0–$50M in $10M steps) -->
+      <text x="44" y="263" class="axis-label" text-anchor="end">$0</text>
+      <text x="44" y="211" class="axis-label" text-anchor="end">$10M</text>
+      <text x="44" y="159" class="axis-label" text-anchor="end">$20M</text>
+      <text x="44" y="107" class="axis-label" text-anchor="end">$30M</text>
+      <text x="44" y="55"  class="axis-label" text-anchor="end">$40M</text>
+      <text x="44" y="3"   class="axis-label" text-anchor="end">$50M</text>
+
+      <!-- Threshold line at $50M -->
+      <line x1="50" y1="0" x2="730" y2="0" stroke="rgba(239,68,68,.5)" stroke-width="1.5" stroke-dasharray="6 3"/>
+      <text x="732" y="3" class="axis-label" style="fill:rgba(239,68,68,.7);font-weight:700">$50M LIMIT</text>
+
+      <!-- QSBS issuance window annotation (May 2026 = x=50, current = x≈50) -->
+      <line x1="50" y1="0" x2="50" y2="260" class="annotation-line"/>
+      <text x="52" y="12" class="qsbs-window-label">QSBS Window Opens</text>
+
+      <!-- X axis labels: May'26, May'27, May'28, May'29, May'30, May'31 -->
+      <!-- x steps: 50, 186, 322, 458, 594, 730 -->
+      <text x="50"  y="275" class="axis-label" text-anchor="middle">May '26</text>
+      <text x="186" y="275" class="axis-label" text-anchor="middle">May '27</text>
+      <text x="322" y="275" class="axis-label" text-anchor="middle">May '28</text>
+      <text x="458" y="275" class="axis-label" text-anchor="middle">May '29</text>
+      <text x="594" y="275" class="axis-label" text-anchor="middle">May '30</text>
+      <text x="730" y="275" class="axis-label" text-anchor="middle">May '31</text>
+
+      <!--
+        Data points (gross assets in $M):
+        May'26 = $3.2M   → y = 260 - (3.2/50)*260 = 260 - 16.64 = 243.4   x=50
+        May'27 = $8.5M   → y = 260 - (8.5/50)*260 = 260 - 44.2 = 215.8    x=186
+        May'28 = $18M    → y = 260 - (18/50)*260  = 260 - 93.6  = 166.4   x=322
+        May'29 = $35M    → y = 260 - (35/50)*260  = 260 - 182   = 78      x=458
+        May'30 = $70M    → y = 260 - (70/50)*260  → PAST QSBS but after series B (use 260 max = 0 actually capped at ceiling for chart purposes, but we track it)
+                           → actual y = 260 - (70/120)*260 = 260 - 151.7 = 108  (scale against $120M exit for extended chart)
+        May'31 = $120M   → y = 260 - (120/120)*260 = 0   x=730
+
+        Let me recalibrate: chart Y axis shows $0–$50M ceiling. Data above $50M exits the safe zone.
+        For plotting purposes I'll scale the Y axis to $0–$130M with the $50M ceiling marked.
+        $130M range → 260px → 1px = $0.5M
+
+        Recalculate with $130M scale (260px total height):
+        $0    → y=260
+        $10M  → y=260-20=240  ... wait that makes the scale labels wrong.
+
+        Let me instead keep $0–$50M on axis but allow the line to go above the chart for >$50M.
+        The $50M marker is at y=0 (top). The exit target $120M would be at y = 260 - (120/50)*260 = 260 - 624 = way above.
+        That doesn't work visually.
+
+        Better approach: scale Y axis to $0–$130M (exit target).
+        130M in 260px → 2px per $1M
+
+        $0    → y=260   (label: $0)
+        $25M  → y=260-50=210  (label: $25M)
+        $50M  → y=260-100=160 (label: $50M) ← QSBS ceiling here
+        $75M  → y=260-150=110
+        $100M → y=260-200=60  (label: $100M)
+        $125M → y=260-250=10  (label: $120M exit)
+
+        Data:
+        May'26 = $3.2M  → y=260-(3.2*2)=253.6  x=50
+        May'27 = $8.5M  → y=260-(8.5*2)=243    x=186
+        May'28 = $22M   → y=260-(22*2)=216      x=322
+        May'29 = $45M   → y=260-(45*2)=170      x=458  (approaching ceiling)
+        May'30 = $75M   → y=260-(75*2)=110      x=594  (past QSBS, Series B)
+        May'31 = $120M  → y=260-(120*2)=20      x=730  (exit)
+      -->
+
+      <!-- Zone fills recalculated for 0-130M scale (260px) -->
+      <!-- Safe zone: $0–$37.5M → y=260 to y=185 -->
+      <!-- Warning:  $37.5–$45M → y=185 to y=170 -->
+      <!-- Critical: $45–$50M   → y=170 to y=160 -->
+      <!-- $50M ceiling: y=160 -->
+
+      <!-- Projected line (dashed, May'28 to May'31) -->
+      <polyline class="line-proj" points="322,216 458,170 594,110 730,20"/>
+
+      <!-- Actual line (solid, May'26 to May'28) -->
+      <polyline class="line-actual" points="50,254 186,243 322,216"/>
+
+      <!-- $50M ceiling marker -->
+      <line x1="50" y1="160" x2="730" y2="160" stroke="rgba(239,68,68,.6)" stroke-width="1.5" stroke-dasharray="6 3"/>
+      <text x="732" y="163" style="font-family:Inter,sans-serif;font-size:9px;fill:rgba(239,68,68,.75);font-weight:700">$50M</text>
+
+      <!-- Warning line at $37.5M → y=185 -->
+      <line x1="50" y1="185" x2="730" y2="185" stroke="rgba(255,237,74,.3)" stroke-width="1" stroke-dasharray="4 4"/>
+      <text x="732" y="188" style="font-family:Inter,sans-serif;font-size:9px;fill:rgba(255,237,74,.5)">$37.5M</text>
+
+      <!-- Data point dots -->
+      <circle cx="50"  cy="254" r="4" class="dot-actual"/>
+      <circle cx="186" cy="243" r="4" class="dot-actual"/>
+      <circle cx="322" cy="216" r="4" class="dot-actual"/>
+      <!-- Projected dots -->
+      <circle cx="458" cy="170" r="3.5" fill="rgba(0,186,255,.4)" stroke="#0D0F12" stroke-width="2"/>
+      <circle cx="594" cy="110" r="3.5" fill="rgba(0,186,255,.4)" stroke="#0D0F12" stroke-width="2"/>
+      <!-- Exit target -->
+      <circle cx="730" cy="20"  r="5"   class="dot-exit"/>
+      <text x="718" y="14" style="font-family:Inter,sans-serif;font-size:9px;fill:#FFED4A;font-weight:700">$120M exit</text>
+
+      <!-- Y axis labels recalculated -->
+      <text x="44" y="263" class="axis-label" text-anchor="end">$0</text>
+      <text x="44" y="213" class="axis-label" text-anchor="end">$25M</text>
+      <text x="44" y="163" class="axis-label" text-anchor="end" style="fill:rgba(239,68,68,.6);font-weight:700">$50M</text>
+      <text x="44" y="113" class="axis-label" text-anchor="end">$75M</text>
+      <text x="44" y="63"  class="axis-label" text-anchor="end">$100M</text>
+      <text x="44" y="23"  class="axis-label" text-anchor="end">$125M</text>
+
+      <!-- Horizontal grid -->
+      <line x1="50" y1="210" x2="730" y2="210" class="grid-line"/>
+      <line x1="50" y1="160" x2="730" y2="160" class="grid-line"/>
+      <line x1="50" y1="110" x2="730" y2="110" class="grid-line"/>
+      <line x1="50" y1="60"  x2="730" y2="60"  class="grid-line"/>
+      <line x1="50" y1="10"  x2="730" y2="10"  class="grid-line"/>
+
+      <!-- Axes -->
+      <line x1="50" y1="0" x2="50" y2="260" class="axis-line" style="stroke-width:1.5"/>
+      <line x1="50" y1="260" x2="730" y2="260" class="axis-line" style="stroke-width:1.5"/>
+    </svg>
+
+    <!-- Zone legend below chart -->
+    <div class="flex items-center space-x-5 mt-4 text-[10px]">
+      <div class="flex items-center space-x-1.5"><div class="w-3 h-3 rounded" style="background:rgba(16,185,129,.25)"></div><span class="text-white/40">Safe Zone (&lt; $37.5M)</span></div>
+      <div class="flex items-center space-x-1.5"><div class="w-3 h-3 rounded" style="background:rgba(255,237,74,.25)"></div><span class="text-white/40">Warning ($37.5M – $45M)</span></div>
+      <div class="flex items-center space-x-1.5"><div class="w-3 h-3 rounded" style="background:rgba(239,68,68,.25)"></div><span class="text-white/40">Critical ($45M – $50M)</span></div>
+      <div class="ml-auto text-white/25">Chart is illustrative of projected growth; not financial advice.</div>
+    </div>
+  </div>
+
+  <!-- Projection table + compliance block -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-5 fadein" style="animation-delay:.24s">
+
+    <!-- Projection table -->
+    <div class="card overflow-hidden">
+      <div class="px-5 py-4 border-b border-white/5">
+        <div class="text-sm font-bold text-white">Asset Projection Schedule</div>
+        <div class="text-[10px] text-white/35 mt-0.5">Gross assets vs. §1202 ceiling by year</div>
+      </div>
+      <table class="w-full">
+        <thead>
+          <tr>
+            <th class="text-left">Period</th>
+            <th class="text-left">Gross Assets</th>
+            <th class="text-left">Ceiling %</th>
+            <th class="text-left">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-white/70 font-medium">May 2026 <span class="text-[9px] text-careblue ml-1">NOW</span></td>
+            <td class="text-white font-bold">$3.2M</td>
+            <td class="text-white/60">6.4%</td>
+            <td><span class="badge bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Safe</span></td>
+          </tr>
+          <tr>
+            <td class="text-white/70 font-medium">May 2027</td>
+            <td class="text-white font-bold">$8.5M</td>
+            <td class="text-white/60">17%</td>
+            <td><span class="badge bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Safe</span></td>
+          </tr>
+          <tr>
+            <td class="text-white/70 font-medium">May 2028</td>
+            <td class="text-white font-bold">$22M</td>
+            <td class="text-white/60">44%</td>
+            <td><span class="badge bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Safe</span></td>
+          </tr>
+          <tr>
+            <td class="text-white/70 font-medium">May 2029 <span class="text-[9px] text-careyellow/70 ml-1">⚠</span></td>
+            <td class="text-white font-bold">$45M</td>
+            <td class="text-careyellow font-bold">90%</td>
+            <td><span class="badge bg-yellow-500/10 text-yellow-300 border border-yellow-500/20">Warning</span></td>
+          </tr>
+          <tr>
+            <td class="text-white/70 font-medium">May 2030</td>
+            <td class="text-white font-bold">$75M</td>
+            <td class="text-white/40">Post-§1202</td>
+            <td><span class="badge bg-white/5 text-white/40 border border-white/10">Series B</span></td>
+          </tr>
+          <tr>
+            <td class="text-white/70 font-medium">May 2031</td>
+            <td class="text-careyellow font-bold">$120M</td>
+            <td class="text-careyellow">Exit</td>
+            <td><span class="badge bg-yellow-500/10 text-yellow-300 border border-yellow-500/20">Target Exit</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Compliance block -->
+    <div class="space-y-4">
+      <div class="card p-5">
+        <div class="text-[9px] font-bold text-white/30 uppercase tracking-widest mb-3">QSBS Issuance Window</div>
+        <div class="space-y-3">
+          <div class="flex items-start space-x-3">
+            <div class="w-2 h-2 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0"></div>
+            <div>
+              <div class="text-xs font-bold text-white">Open Now — All stock issuances QSBS-eligible</div>
+              <div class="text-[10px] text-white/35 mt-0.5">Gross assets at $3.2M (6.4% of $50M ceiling)</div>
+            </div>
+          </div>
+          <div class="flex items-start space-x-3">
+            <div class="w-2 h-2 rounded-full bg-careyellow mt-1.5 flex-shrink-0"></div>
+            <div>
+              <div class="text-xs font-bold text-white">Close window before May 2029 raise</div>
+              <div class="text-[10px] text-white/35 mt-0.5">Series A will push assets to ~$45M — near ceiling. Issue all QSBS stock before Series A close.</div>
+            </div>
+          </div>
+          <div class="flex items-start space-x-3">
+            <div class="w-2 h-2 rounded-full bg-red-400 mt-1.5 flex-shrink-0"></div>
+            <div>
+              <div class="text-xs font-bold text-white">Series B invalidates new QSBS</div>
+              <div class="text-[10px] text-white/35 mt-0.5">Post-Series B assets exceed $50M. No new §1202 eligible stock after that event.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card p-5">
+        <div class="text-[9px] font-bold text-white/30 uppercase tracking-widest mb-3">IRC §1202 Requirements Met</div>
+        <div class="space-y-2">
+          <div class="flex items-center space-x-2 text-xs"><span class="text-emerald-400">✓</span><span class="text-white/70">C-corporation at time of issuance</span></div>
+          <div class="flex items-center space-x-2 text-xs"><span class="text-emerald-400">✓</span><span class="text-white/70">Gross assets &lt; $50M at issuance ($3.2M)</span></div>
+          <div class="flex items-center space-x-2 text-xs"><span class="text-emerald-400">✓</span><span class="text-white/70">Active business in qualified trade</span></div>
+          <div class="flex items-center space-x-2 text-xs"><span class="text-emerald-400">✓</span><span class="text-white/70">Stock acquired at original issuance</span></div>
+          <div class="flex items-center space-x-2 text-xs"><span class="text-white/30">○</span><span class="text-white/40">5-year holding period (clock starts at issuance)</span></div>
+        </div>
+        <div class="mt-4 pt-3 border-t border-white/5 text-[10px] text-emerald-400/70">
+          Potential federal capital-gains exclusion: <strong class="text-emerald-400">100%</strong> (up to $10M or 10× basis per investor, whichever is greater).
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer note -->
+  <div class="text-[10px] text-white/20 text-center pb-6 fadein" style="animation-delay:.32s">
+    For internal use only · CareState Fertility, Inc. · QSBS analysis prepared for board and investor review · Not legal or tax advice.
+  </div>
+
+</div>
+
+<script>
+document.getElementById('ts-label').textContent = new Date().toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'}) + ' · ' + new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+</script>
+</body>
+</html>
