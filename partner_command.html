@@ -349,6 +349,7 @@
 <!-- ── Toast ────────────────────────────────────────────────────── -->
 <div class="toast" id="toast"></div>
 
+<script src="state.js"></script>
 <script>
 // ─── QSBS Telemetry (ported from src/infrastructure/telemetry/qsbs.ts) ──
 const GROSS_ASSET_LIMIT = 50_000_000;
@@ -374,7 +375,7 @@ const PATIENTS = [
       { name:'Gonal-F',   dosage:'225 IU', isVerified:true  },
       { name:'Cetrotide', dosage:'0.25mg', isVerified:true  }
     ],
-    syncStatus:'verified', pharmacy:'Walgreens Specialty', lastSync:'18:45',
+    syncStatus:'pending', pharmacy:'Walgreens Specialty', lastSync:'18:45',
     packageStatus:'Lending Approved', lender:'ARC Finance', medBundle:'Paid',
     insurance:'Cigna · Auth #7823', nurseAssigned:'Sarah K.'
   },
@@ -834,7 +835,7 @@ if (window.CARE_STATE) {
   CARE_STATE.onMessage(function(msg) {
     if (msg.type === 'loop_closed') {
       const p = PATIENTS.find(x => x.code === msg.patientCode);
-      if (p && p.syncStatus !== 'verified') {
+      if (p) {
         p.syncStatus = 'verified';
         p.lastSync = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
         renderGrid(activeFilter);
@@ -857,7 +858,6 @@ setTimeout(() => {
 }, 400);
 
 </script>
-<script src="state.js"></script>
 <script src="i18n.js"></script>
 <script>
 // ─── i18n re-render callbacks ──────────────────────────────────────
