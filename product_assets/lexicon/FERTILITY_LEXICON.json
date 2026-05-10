@@ -1,0 +1,94 @@
+{
+  "medications": [
+    {
+      "name": "Menopur",
+      "type": "Gonadotropin",
+      "purpose": "Contains both FSH and LH to stimulate the ovaries to produce multiple eggs.",
+      "common_side_effects": ["Headache", "Abdominal pain", "Injection site reaction"],
+      "storage": "Room temperature or refrigerated"
+    },
+    {
+      "name": "Gonal-F / Follistim",
+      "type": "FSH (Follicle Stimulating Hormone)",
+      "purpose": "Pure FSH used to stimulate the development of multiple follicles in the ovaries.",
+      "common_side_effects": ["Ovarian hyperstimulation", "Headache", "Nausea"],
+      "storage": "Refrigerated (Follistim) or Room Temp (Gonal-F Redi-ject)"
+    },
+    {
+      "name": "Cetrotide / Ganirelix",
+      "type": "GnRH Antagonist",
+      "purpose": "Prevents premature ovulation (the 'Lead Egg' from releasing early) during stimulation.",
+      "common_side_effects": ["Skin irritation at injection site"],
+      "storage": "Room temperature"
+    },
+    {
+      "name": "Lupron (Leuprolide Acetate)",
+      "type": "GnRH Agonist",
+      "purpose": "Used for 'Down Regulation' to prevent premature ovulation or as a 'Trigger Shot' to induce final maturation.",
+      "common_side_effects": ["Hot flashes", "Headache"],
+      "storage": "Room temperature"
+    },
+    {
+      "name": "Ovidrel / Novarel / Pregnyl",
+      "type": "hCG (Human Chorionic Gonadotropin)",
+      "purpose": "The 'Trigger Shot'. Induces final maturation of the eggs and prepares them for retrieval.",
+      "common_side_effects": ["Abdominal pain", "Nausea"],
+      "storage": "Refrigerated (Ovidrel) or Room Temp (Novarel)"
+    },
+    {
+      "name": "Progesterone (PIO / Endometrin / Crinone)",
+      "type": "Progestogen",
+      "purpose": "Prepares and maintains the uterine lining for embryo implantation and early pregnancy.",
+      "common_side_effects": ["Bloating", "Breast tenderness", "Mood swings"],
+      "storage": "Room temperature"
+    }
+  ],
+  "procedures": [
+    {
+      "term": "IVF (In Vitro Fertilization)",
+      "definition": "A process where eggs are extracted, fertilized by sperm in a lab, and the resulting embryo is transferred to the uterus."
+    },
+    {
+      "term": "IUI (Intrauterine Insemination)",
+      "definition": "A fertility treatment that involves placing sperm inside a woman's uterus to facilitate fertilization."
+    },
+    {
+      "term": "ICSI (Intracytoplasmic Sperm Injection)",
+      "definition": "A specialized form of IVF where a single sperm is injected directly into a mature egg."
+    },
+    {
+      "term": "PGT-A (Preimplantation Genetic Testing for Aneuploidies)",
+      "definition": "Screening embryos for the correct number of chromosomes before transfer."
+    },
+    {
+      "term": "FET (Frozen Embryo Transfer)",
+      "definition": "A cycle where a frozen embryo from a previous IVF cycle is thawed and transferred to the uterus."
+    },
+    {
+      "term": "Egg Retrieval (ER)",
+      "definition": "A minor surgical procedure to collect mature eggs from the follicles in the ovaries."
+    }
+  ],
+  "physiological_terms": [
+    {
+      "term": "Follicle",
+      "definition": "A small, fluid-filled sac in the ovary that contains a developing egg."
+    },
+    {
+      "term": "AMH (Anti-Müllerian Hormone)",
+      "definition": "A hormone marker used to estimate a woman's ovarian reserve (egg count)."
+    },
+    {
+      "term": "Blastocyst",
+      "definition": "An embryo that has developed for 5 to 6 days after fertilization and is ready for implantation."
+    },
+    {
+      "term": "Stimming (Stimulation)",
+      "definition": "The phase of an IVF cycle where injectable medications are used to grow multiple follicles."
+    },
+    {
+      "term": "Endometrium",
+      "definition": "The lining of the uterus that thickens during the menstrual cycle in preparation for a possible pregnancy."
+    }
+  ]
+}

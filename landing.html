@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CareState Fertility | The Standard in Fertility Navigation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        careblue: '#00BAFF',
+                        careyellow: '#FFED4A',
+                        dark: '#1A1A1B',
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        heading: ['Outfit', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style>
+        .premium-shadow { box-shadow: 0 12px 24px rgba(0, 186, 255, 0.1); }
+        .gradient-bg { background: linear-gradient(135deg, #F8FAFC 0%, #FFFFFF 100%); }
+    </style>
+</head>
+<body class="bg-white text-dark font-sans antialiased">
+    <!-- Navigation -->
+    <nav class="fixed w-full z-50 bg-white/80 backdrop-blur-md border-b border-gray-100">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <div class="w-10 h-10 bg-careblue rounded-lg flex items-center justify-center">
+                    <span class="text-white font-heading font-bold text-xl">C</span>
+                </div>
+                <span class="font-heading font-bold text-2xl tracking-tight text-dark">CareState <span class="text-careblue">Fertility</span></span>
+            </div>
+            <div class="hidden md:flex items-center space-x-8 text-sm font-medium">
+                <a href="#orchestration" class="hover:text-careblue transition-colors">Orchestration</a>
+                <a href="#habitos" class="hover:text-careblue transition-colors">Habit OS</a>
+                <a href="#security" class="hover:text-careblue transition-colors">Security</a>
+                <a href="#waitlist" class="bg-dark text-white px-6 py-2.5 rounded-full hover:bg-careblue transition-all duration-300 transform hover:-translate-y-0.5">Join Waitlist</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden gradient-bg">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <div class="inline-block px-4 py-1.5 mb-6 bg-careblue/10 rounded-full">
+                <span class="text-careblue font-semibold text-sm tracking-wide uppercase">Launching 2026</span>
+            </div>
+            <h1 class="text-5xl lg:text-7xl font-heading font-bold mb-8 tracking-tight leading-tight">
+                The Standard in <br/>
+                <span class="text-careblue">Fertility Navigation.</span>
+            </h1>
+            <p class="text-xl text-gray-600 mb-12 max-w-2xl mx-auto leading-relaxed">
+                Precision guidance for your next best step. We remove the burden of being your own medical supervisor, so you can focus on what matters.
+            </p>
+            <div id="waitlist" class="max-w-md mx-auto">
+                <form class="flex flex-col sm:flex-row gap-3 p-1.5 bg-white rounded-2xl border border-gray-200 premium-shadow">
+                    <input type="email" placeholder="Enter your email" class="flex-1 px-6 py-4 rounded-xl focus:outline-none text-lg" required>
+                    <button type="submit" class="bg-careblue text-white px-8 py-4 rounded-xl font-bold text-lg hover:bg-dark transition-all duration-300">
+                        Join the Egg Tribe
+                    </button>
+                </form>
+                <p class="mt-4 text-sm text-gray-500">Secure. HIPAA-ready. Private.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pillars -->
+    <section id="orchestration" class="py-24 bg-white">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid lg:grid-cols-3 gap-12">
+                <!-- Pillar 1 -->
+                <div class="p-8 rounded-3xl border border-gray-100 bg-gray-50/50 hover:border-careblue/30 transition-all duration-300">
+                    <div class="w-14 h-14 bg-careyellow rounded-2xl flex items-center justify-center mb-6">
+                        <svg class="w-8 h-8 text-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    </div>
+                    <h3 class="text-2xl font-heading font-bold mb-4">Independent Orchestration</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        We sit between you, the clinic, and the pharmacy to ensure every dose, every appointment, and every update is perfectly synced. No more manual follow-ups.
+                    </p>
+                </div>
+
+                <!-- Pillar 2 -->
+                <div id="habitos" class="p-8 rounded-3xl border border-gray-100 bg-gray-50/50 hover:border-careblue/30 transition-all duration-300">
+                    <div class="w-14 h-14 bg-careblue rounded-2xl flex items-center justify-center mb-6">
+                        <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <h3 class="text-2xl font-heading font-bold mb-4">The Habit OS</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        The "Now Card" philosophy. We suppress the noise and show you only what you need to do in the next 24 hours. Clear, actionable, and anxiety-free.
+                    </p>
+                </div>
+
+                <!-- Pillar 3 -->
+                <div id="security" class="p-8 rounded-3xl border border-gray-100 bg-gray-50/50 hover:border-careblue/30 transition-all duration-300">
+                    <div class="w-14 h-14 bg-dark rounded-2xl flex items-center justify-center mb-6 text-white">
+                        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 00-2 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+                    </div>
+                    <h3 class="text-2xl font-heading font-bold mb-4">Fortress Security</h3>
+                    <p class="text-gray-600 leading-relaxed">
+                        Built in the "Safe Room." HIPAA-compliant architecture, end-to-end encryption, and dedicated data sovereignty ensure your most sensitive information is protected.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-50 border-t border-gray-200 py-12">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <div class="flex items-center justify-center space-x-2 mb-6">
+                <div class="w-8 h-8 bg-careblue rounded-md flex items-center justify-center">
+                    <span class="text-white font-heading font-bold text-sm">C</span>
+                </div>
+                <span class="font-heading font-bold text-lg tracking-tight">CareState Fertility</span>
+            </div>
+            <p class="text-sm text-gray-500">© 2026 CareState Fertility, Inc. A Delaware C-Corp. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>

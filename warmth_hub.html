@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareState — The Warmth Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            careblue:   '#00BAFF',
+            careyellow: '#FFED4A',
+            careorange: '#FF8A00',
+            dark:       '#1A1A1B',
+            muted:      '#4A4A4A',
+          },
+          fontFamily: { sans:['Inter','sans-serif'], heading:['Outfit','sans-serif'] },
+          maxWidth: { '8xl': '1360px' }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #FFFBF4; }
+
+    /* Animations */
+    .live-dot { animation: livePulse 2s ease-in-out infinite; }
+    @keyframes livePulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,186,255,.7)} 50%{box-shadow:0 0 0 5px rgba(0,186,255,0)} }
+    .warm-pulse { animation: warmPulse 2.6s ease-in-out infinite; }
+    @keyframes warmPulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,138,0,.45)} 50%{box-shadow:0 0 0 14px rgba(255,138,0,0)} }
+    .breathe { animation: breathe 5s ease-in-out infinite; }
+    @keyframes breathe { 0%,100%{transform:scale(1);opacity:.65} 50%{transform:scale(1.12);opacity:1} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+    .slide-up { animation: slideUp 0.4s ease forwards; }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
+    /* Card */
+    .card-shadow    { box-shadow: 0 4px 16px rgba(0,0,0,.06); }
+    .warm-shadow    { box-shadow: 0 12px 40px rgba(255,138,0,.1); }
+    .premium-shadow { box-shadow: 0 12px 32px rgba(0,186,255,.12); }
+
+    /* Habit row */
+    .habit-row { transition: background 0.18s ease, border-color 0.18s ease; cursor: pointer; }
+    .habit-row:hover { border-color: rgba(255,138,0,.4) !important; }
+    .habit-row.done { opacity: 0.55; }
+    .habit-check { transition: all 0.2s ease; }
+
+    /* Foundation gate */
+    .gate-bar { transition: width 1.2s cubic-bezier(.4,0,.2,1); }
+
+    /* Biofeedback ring */
+    .breath-ring { animation: breathRing 5s ease-in-out infinite; }
+    @keyframes breathRing {
+      0%,100%{ transform:scale(1);   opacity:.5; box-shadow:0 0 0 0 rgba(255,138,0,.4) }
+      50%    { transform:scale(1.15);opacity:1;  box-shadow:0 0 0 16px rgba(255,138,0,0) }
+    }
+  </style>
+</head>
+<body class="font-sans antialiased">
+
+<!-- ══════════════════════════════════════ TOP NAV -->
+<nav class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-orange-50" style="box-shadow:0 1px 0 #fef3e2">
+  <div class="max-w-8xl mx-auto px-6 md:px-12">
+    <div class="h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="index.html" class="w-8 h-8 bg-careblue rounded-lg flex items-center justify-center flex-shrink-0" style="box-shadow:0 4px 12px rgba(0,186,255,.35)">
+          <span class="text-white font-heading font-bold text-sm leading-none">C</span>
+        </a>
+        <div>
+          <span class="font-heading font-bold text-dark text-sm">CareState</span>
+          <span class="text-muted text-xs font-medium ml-2 hidden sm:inline">Warmth Hub</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <div id="warmth-status-badge" class="flex items-center space-x-1.5 px-3 py-1 rounded-full" style="background:rgba(255,138,0,.1)">
+          <div class="w-2 h-2 bg-careorange rounded-full warm-pulse"></div>
+          <span class="text-xs font-bold text-careorange">Warmth Active</span>
+        </div>
+        <div class="flex items-center space-x-1.5">
+          <div class="w-2 h-2 bg-careblue rounded-full live-dot"></div>
+          <span class="text-xs font-bold text-careblue">Synced</span>
+        </div>
+        <a href="dashboard.html" class="hidden md:block text-xs font-semibold text-muted hover:text-dark transition-colors">← Dashboard</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════ CONTENT -->
+<div class="max-w-lg mx-auto px-6 py-8">
+
+  <!-- Page header -->
+  <div class="mb-7 slide-up">
+    <div class="flex items-center space-x-2 mb-1.5">
+      <div class="w-1.5 h-1.5 bg-careorange rounded-full"></div>
+      <span class="text-[10px] font-bold text-careorange uppercase tracking-[.16em]">暖宫 · Warmth Protocol</span>
+    </div>
+    <h1 class="font-heading text-2xl font-bold text-dark">Create the Warmth.</h1>
+    <p class="text-sm text-muted mt-1">Uterine blood flow, thermal regulation, and emotional readiness — unified.</p>
+  </div>
+
+  <!-- ── Body Readiness Card ── -->
+  <div class="rounded-3xl p-6 mb-5 warm-shadow slide-up" style="background:linear-gradient(135deg,#FFF9EC 0%,#FFF5D6 100%);border:1.5px solid rgba(255,138,0,.2);animation-delay:.05s">
+    <div class="flex items-center justify-between mb-4">
+      <span class="text-[10px] font-bold text-careorange/70 uppercase tracking-[.14em]">Body Readiness</span>
+      <span id="flow-badge" class="text-[10px] font-bold text-careorange bg-careorange/10 border border-careorange/20 px-2.5 py-1 rounded-full">Optimal Flow</span>
+    </div>
+
+    <!-- Biofeedback breathe ring -->
+    <div class="flex items-center space-x-5 mb-4">
+      <div class="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0 breath-ring" style="background:rgba(255,138,0,.12);border:1.5px solid rgba(255,138,0,.3)">
+        <svg class="w-7 h-7 text-careorange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+      </div>
+      <div class="flex-1">
+        <div class="font-heading text-lg font-bold text-dark leading-tight mb-0.5">Your sanctuary is warm.</div>
+        <p class="text-xs text-muted leading-relaxed">Uterine blood flow optimized. Maintain today's warmth habits to support implantation readiness.</p>
+      </div>
+    </div>
+
+    <!-- Empathy pulse -->
+    <div class="bg-white/60 rounded-2xl px-4 py-3 border border-careorange/10" id="empathy-pulse-text">
+      <div class="text-[10px] font-bold text-careorange/60 uppercase tracking-wider mb-1">Empathy Pulse</div>
+      <p class="text-xs text-dark/70 leading-relaxed italic" id="empathy-quote">"Your body is a sanctuary. Today, we focus on creating the warmth needed for life to take root."</p>
+    </div>
+  </div>
+
+  <!-- ── Foundation Gate ── -->
+  <div class="bg-white border border-gray-100 rounded-2xl p-5 mb-5 card-shadow slide-up" style="animation-delay:.1s">
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center space-x-2">
+        <div class="w-6 h-6 bg-careorange/15 rounded-lg flex items-center justify-center flex-shrink-0">
+          <svg class="w-3.5 h-3.5 text-careorange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        </div>
+        <span class="text-xs font-bold text-dark">Confidence Baseline</span>
+        <span class="text-[10px] font-bold text-muted">· Foundation Gate</span>
+      </div>
+      <span id="gate-pct" class="text-xs font-bold text-careorange">94%</span>
+    </div>
+    <div class="h-2 bg-gray-100 rounded-full overflow-hidden mb-2">
+      <div id="gate-bar" class="gate-bar h-full rounded-full" style="width:0%;background:#FF8A00"></div>
+    </div>
+    <div class="flex justify-between text-[10px] text-muted font-medium">
+      <span>0%</span>
+      <span id="gate-label" class="font-bold text-green-600">✓ Authorized · >90% threshold met</span>
+      <span>100%</span>
+    </div>
+  </div>
+
+  <!-- ── Daily Warmth Habits ── -->
+  <div class="mb-5 slide-up" style="animation-delay:.12s">
+    <div class="flex items-center justify-between mb-3">
+      <span class="text-[10px] font-bold text-muted uppercase tracking-widest">Today's Warmth Habits</span>
+      <span id="habit-count" class="text-xs font-bold text-careorange">0 of 3</span>
+    </div>
+    <div id="habit-list" class="space-y-2.5"></div>
+  </div>
+
+  <!-- ── Warmth Status Check ── -->
+  <div class="bg-white border border-gray-100 rounded-2xl p-5 mb-5 card-shadow slide-up" style="animation-delay:.15s">
+    <div class="text-[10px] font-bold text-muted uppercase tracking-widest mb-4">Environmental Check</div>
+    <div class="grid grid-cols-3 gap-3 mb-4">
+      <div class="text-center">
+        <div class="text-[10px] text-muted font-medium mb-1">Temperature</div>
+        <div class="font-heading text-lg font-bold text-dark" id="env-temp">98.2°</div>
+        <div class="text-[9px] font-bold text-green-600 mt-0.5">Warm ✓</div>
+      </div>
+      <div class="text-center border-x border-gray-100">
+        <div class="text-[10px] text-muted font-medium mb-1">Hydration</div>
+        <div class="font-heading text-lg font-bold text-dark" id="env-hydration">Good</div>
+        <div class="text-[9px] font-bold text-green-600 mt-0.5">Optimal ✓</div>
+      </div>
+      <div class="text-center">
+        <div class="text-[10px] text-muted font-medium mb-1">Anxiety</div>
+        <div class="font-heading text-lg font-bold text-dark" id="env-anxiety">3/10</div>
+        <div class="text-[9px] font-bold text-green-600 mt-0.5">Low ✓</div>
+      </div>
+    </div>
+    <div id="warmth-rec" class="bg-green-50 border border-green-100 rounded-xl px-3 py-2.5">
+      <div class="text-[10px] font-bold text-green-700">Thermal · Warm</div>
+      <div class="text-xs text-green-600 mt-0.5">Flow is optimal. Maintain current warmth habits.</div>
+    </div>
+  </div>
+
+  <!-- ── Solo-Sync CTA ── -->
+  <div class="rounded-3xl overflow-hidden warm-shadow slide-up" style="background:#1A1A1B;border:1.5px solid #2a2a2a;animation-delay:.18s">
+    <div class="px-6 py-7">
+      <div class="flex items-center space-x-3 mb-4">
+        <div class="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 warm-pulse" style="background:rgba(255,138,0,.15);border:1.5px solid rgba(255,138,0,.3)">
+          <svg class="w-5 h-5 text-careorange" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        </div>
+        <div>
+          <div class="text-[10px] font-bold text-careorange/70 uppercase tracking-[.12em]">Solo-Sync Companion · SMBC</div>
+          <div class="font-heading text-base font-bold text-white">9 PM Injection · A second set of eyes.</div>
+        </div>
+      </div>
+      <p class="text-sm text-white/50 leading-relaxed mb-5">For Single Mothers By Choice. We walk through every step together — bubble check, breath, inject, hold. You are not alone in this.</p>
+      <a href="reddit_rescues.html" class="block w-full bg-careorange text-white font-heading font-bold text-sm py-3.5 rounded-2xl text-center hover:bg-careorange/90 transition-colors">
+        Activate Solo-Sync →
+      </a>
+    </div>
+    <div class="border-t border-white/[.06] px-6 py-3 flex items-center justify-between">
+      <span class="text-[10px] text-white/25 font-medium">Next injection · 9:00 PM · Gonal-F 225 IU</span>
+      <span class="text-[10px] font-bold text-careorange/60">7-step protocol</span>
+    </div>
+  </div>
+
+  <!-- ── Quick links ── -->
+  <div class="mt-5 flex gap-2 slide-up" style="animation-delay:.22s">
+    <a href="dashboard.html" class="flex-1 flex items-center justify-center space-x-1.5 bg-white border border-gray-200 text-xs font-bold text-muted px-3 py-2.5 rounded-xl hover:border-careorange hover:text-careorange transition-colors">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+      <span>Dashboard</span>
+    </a>
+    <a href="reddit_rescues.html" class="flex-1 flex items-center justify-center space-x-1.5 bg-white border border-gray-200 text-xs font-bold text-muted px-3 py-2.5 rounded-xl hover:border-careorange hover:text-careorange transition-colors">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/></svg>
+      <span>Toolkit</span>
+    </a>
+    <a href="lexicon.html" class="flex-1 flex items-center justify-center space-x-1.5 bg-white border border-gray-200 text-xs font-bold text-muted px-3 py-2.5 rounded-xl hover:border-careorange hover:text-careorange transition-colors">
+      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+      <span>Lexicon</span>
+    </a>
+  </div>
+
+</div><!-- /content -->
+
+<script src="state.js"></script>
+<script>
+// ─── Warmth Habit Data ────────────────────────────────────────────
+const WARMTH_HABITS = [
+  { id:'wh1', term:'Socks On',           description:'Keep extremities warm to optimize blood flow to the pelvic region.',  icon:'🧦' },
+  { id:'wh2', term:'Warm Liquids Only',  description:'No iced drinks today — maintain internal core temperature.',            icon:'☕' },
+  { id:'wh3', term:'Gentle Movement',    description:'15-minute walk or gentle yoga to stimulate circulation.',               icon:'🚶' },
+];
+
+const EMPATHY_PULSES = [
+  '"Your body is a sanctuary. Today, we focus on creating the warmth needed for life to take root."',
+  '"Rest is not passive. It is the most active thing you can do for your embryos right now."',
+  '"Every warm cup, every step, every breath — they all count. You are doing the work."',
+  '"The warmth you create today is the environment where miracles become possible."',
+];
+
+// ─── Habit persistence ────────────────────────────────────────────
+function getWarmthDone() {
+  try { return new Set(JSON.parse(localStorage.getItem('cs_warmth_habits') || '[]')); }
+  catch(_) { return new Set(); }
+}
+function saveWarmthDone(set) {
+  localStorage.setItem('cs_warmth_habits', JSON.stringify([...set]));
+}
+
+function renderHabits() {
+  const done = getWarmthDone();
+  const el = document.getElementById('habit-list');
+  el.innerHTML = WARMTH_HABITS.map(h => `
+    <div class="habit-row ${done.has(h.id) ? 'done' : ''} bg-white border border-gray-100 rounded-2xl px-4 py-3.5 flex items-center space-x-3 card-shadow" onclick="toggleHabit('${h.id}')">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-lg" style="background:${done.has(h.id) ? 'rgba(255,138,0,.12)' : '#F9FAFB'}">${h.icon}</div>
+      <div class="flex-1 min-w-0">
+        <div class="text-sm font-bold text-dark">${h.term}</div>
+        <div class="text-[10px] text-muted mt-0.5 leading-relaxed">${h.description}</div>
+      </div>
+      <div class="habit-check w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center border-2 ${done.has(h.id) ? 'border-careorange bg-careorange' : 'border-gray-200'}">
+        ${done.has(h.id) ? '<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>' : ''}
+      </div>
+    </div>
+  `).join('');
+  document.getElementById('habit-count').textContent = `${done.size} of ${WARMTH_HABITS.length}`;
+}
+
+function toggleHabit(id) {
+  const done = getWarmthDone();
+  if (done.has(id)) done.delete(id); else done.add(id);
+  saveWarmthDone(done);
+  renderHabits();
+  if (done.size === WARMTH_HABITS.length) showAllComplete();
+}
+
+function showAllComplete() {
+  const badge = document.getElementById('flow-badge');
+  if (badge) { badge.textContent = '🌟 All Habits Complete'; }
+}
+
+// ─── Foundation Gate animation ────────────────────────────────────
+function animateGate() {
+  const score = 94;
+  const bar   = document.getElementById('gate-bar');
+  const label = document.getElementById('gate-label');
+  setTimeout(() => { if (bar) bar.style.width = score + '%'; }, 200);
+  if (score < 90 && label) {
+    label.className = 'font-bold text-careorange';
+    label.textContent = `${score}% · Below threshold (90% required)`;
+  }
+}
+
+// ─── Rotate empathy pulse ─────────────────────────────────────────
+function setEmpathyPulse() {
+  const el = document.getElementById('empathy-quote');
+  if (!el) return;
+  const idx = Math.floor(Date.now() / 86400000) % EMPATHY_PULSES.length;
+  el.textContent = EMPATHY_PULSES[idx];
+}
+
+// ─── CareState integration ────────────────────────────────────────
+if (window.CARE_STATE) {
+  CARE_STATE.onMessage(function(msg) {
+    if (msg.type === 'loop_closed') {
+      document.getElementById('warmth-status-badge').innerHTML = `
+        <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+        <span class="text-xs font-bold text-green-600">Dose Logged</span>
+      `;
+      document.getElementById('warmth-status-badge').style.background = 'rgba(16,185,129,.1)';
+    }
+  });
+}
+
+// ─── Init ─────────────────────────────────────────────────────────
+renderHabits();
+animateGate();
+setEmpathyPulse();
+</script>
+<script src="i18n.js"></script>
+</body>
+</html>

@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CareState — Patient Toolkit</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { careblue:'#00BAFF', careyellow:'#FFED4A', dark:'#1A1A1B', muted:'#4A4A4A' },
+          fontFamily: { sans:['Inter','sans-serif'], heading:['Outfit','sans-serif'] },
+          maxWidth: { '8xl': '1360px' }
+        }
+      }
+    }
+  </script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #f7f9fc; }
+
+    .card-shadow    { box-shadow: 0 4px 16px rgba(0,0,0,.06); }
+    .premium-shadow { box-shadow: 0 12px 32px rgba(0,186,255,.14); }
+
+    .live-dot { animation: livePulse 2s ease-in-out infinite; }
+    @keyframes livePulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,186,255,.7)} 50%{box-shadow:0 0 0 5px rgba(0,186,255,0)} }
+    .peace-pulse { animation: peacePulse 2.2s ease-in-out infinite; }
+    @keyframes peacePulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,237,74,.65)} 50%{box-shadow:0 0 0 12px rgba(255,237,74,0)} }
+    .blue-pulse { animation: bluePulse 2.2s ease-in-out infinite; }
+    @keyframes bluePulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,186,255,.5)} 50%{box-shadow:0 0 0 8px rgba(0,186,255,0)} }
+    @keyframes slideUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+    .slide-up { animation: slideUp 0.38s ease forwards; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .spin { animation: spin 1s linear infinite; }
+
+    .funnel-bar { transition: width 0.9s cubic-bezier(.4,0,.2,1); }
+    .funnel-step { transition: transform 0.15s ease; }
+
+    .pay-tab { transition: all 0.2s ease; cursor: pointer; border-radius: 10px; padding: 8px 16px; font-size: 12px; font-weight: 700; color: #4A4A4A; }
+    .pay-tab.active { background: #00BAFF; color: #fff; }
+
+    /* Solo-Sync overlay */
+    .sync-overlay {
+      position: fixed; inset: 0; z-index: 95;
+      background: rgba(8,8,10,.97);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 24px;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.35s ease;
+    }
+    .sync-overlay.open { opacity: 1; pointer-events: all; }
+
+    .timer-ring-track { fill: none; stroke: rgba(255,255,255,.08); stroke-width: 6; }
+    .timer-ring-fill {
+      fill: none; stroke-width: 6; stroke-linecap: round;
+      transform: rotate(-90deg); transform-origin: 50% 50%;
+      transition: stroke-dashoffset 1s linear;
+    }
+
+    .item-row { transition: opacity 0.2s ease, background 0.15s ease; cursor: pointer; }
+    .item-row:hover { background: rgba(0,186,255,.03); }
+    .item-row.checked { opacity: 0.45; }
+    .check-circle { transition: all 0.18s ease; }
+
+    .phase-tab-active { background: #fff; color: #1A1A1B; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+
+    /* Injection window glow */
+    .injection-active { animation: injGlow 2.4s ease-in-out infinite; }
+    @keyframes injGlow { 0%,100%{box-shadow:0 0 0 0 rgba(255,237,74,.55)} 50%{box-shadow:0 0 0 16px rgba(255,237,74,0)} }
+
+    /* Step badge */
+    .step-badge { font-family: 'Outfit', sans-serif; }
+  </style>
+</head>
+<body class="font-sans antialiased">
+
+<!-- ══════════════════════════════════════ TOP NAV -->
+<nav class="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100" style="box-shadow:0 1px 0 #f0f2f6">
+  <div class="max-w-8xl mx-auto px-6 md:px-12">
+    <div class="h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <a href="index.html" class="w-8 h-8 bg-careblue rounded-lg flex items-center justify-center flex-shrink-0" style="box-shadow:0 4px 12px rgba(0,186,255,.35)">
+          <span class="text-white font-heading font-bold text-sm leading-none">C</span>
+        </a>
+        <div>
+          <span class="font-heading font-bold text-dark text-sm">CareState</span>
+          <span class="text-muted text-xs font-medium ml-2 hidden sm:inline">Patient Toolkit</span>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-1.5">
+          <div class="w-2 h-2 bg-careblue rounded-full live-dot"></div>
+          <span class="text-xs font-bold text-careblue">Synced</span>
+        </div>
+        <a href="dashboard.html" class="hidden md:block text-xs font-semibold text-muted hover:text-dark transition-colors">← Dashboard</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════ CONTENT -->
+<div class="max-w-8xl mx-auto px-6 md:px-12 py-8">
+
+  <!-- Page header -->
+  <div class="mb-7">
+    <div class="flex items-center space-x-2 mb-1.5">
+      <div class="w-1.5 h-1.5 bg-careblue rounded-full"></div>
+      <span class="text-[10px] font-bold text-careblue uppercase tracking-[.16em]">Community-sourced clarity</span>
+    </div>
+    <h1 class="font-heading text-2xl font-bold text-dark">Patient Toolkit</h1>
+    <p class="text-sm text-muted mt-1">Four tools for the moments no one prepares you for.</p>
+  </div>
+
+  <!-- ══════ GRID: 2-col on desktop ══════ -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+    <!-- ────────────────────────────────────────
+         MODULE 1 · FIRST BOX STATION GUIDE
+    ──────────────────────────────────────── -->
+    <div class="bg-white border border-gray-100 rounded-3xl overflow-hidden card-shadow slide-up" style="animation-delay:.05s">
+      <!-- Header -->
+      <div class="px-6 pt-6 pb-4 border-b border-gray-100">
+        <div class="flex items-center justify-between mb-1">
+          <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 bg-careblue/10 rounded-xl flex items-center justify-center flex-shrink-0">
+              <svg class="w-4 h-4 text-careblue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            </div>
+            <span class="font-heading font-bold text-dark text-sm">First Box Station Guide</span>
+          </div>
+          <span id="pharmacy-progress" class="text-xs font-bold text-careblue bg-careblue/10 px-2.5 py-1 rounded-full">0 of 8</span>
+        </div>
+        <p class="text-xs text-muted ml-10">Delivery received · Sort before you do anything else.</p>
+      </div>
+
+      <!-- Fridge zone -->
+      <div class="px-6 pt-4 pb-3">
+        <div class="flex items-center space-x-2 mb-3">
+          <div class="w-6 h-6 bg-careblue/15 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg class="w-3.5 h-3.5 text-careblue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+          </div>
+          <div>
+            <span class="text-xs font-bold text-careblue">Refrigerate Now</span>
+            <span class="text-[10px] text-muted ml-1.5">36–46°F (2–8°C) · Do not freeze</span>
+          </div>
+        </div>
+        <div id="fridge-list" class="space-y-1.5"></div>
+      </div>
+
+      <!-- Room temp zone -->
+      <div class="mx-6 mb-4 border-t border-dashed border-gray-100 pt-4">
+        <div class="flex items-center space-x-2 mb-3">
+          <div class="w-6 h-6 bg-careyellow/30 rounded-lg flex items-center justify-center flex-shrink-0">
+            <svg class="w-3.5 h-3.5 text-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          </div>
+          <div>
+            <span class="text-xs font-bold text-dark">Room Temperature</span>
+            <span class="text-[10px] text-muted ml-1.5">59–77°F (15–25°C) · Keep dry</span>
+          </div>
+        </div>
+        <div id="room-list" class="space-y-1.5"></div>
+      </div>
+
+      <!-- Complete banner (hidden until all checked) -->
+      <div id="pharmacy-complete" class="hidden mx-6 mb-6 bg-green-50 border border-green-100 rounded-2xl px-4 py-3 flex items-center space-x-3">
+        <div class="w-7 h-7 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+          <svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+        </div>
+        <div class="flex-1">
+          <div class="text-xs font-bold text-green-700">All items sorted and verified.</div>
+          <div class="text-[10px] text-green-600">Your medications are properly stored.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ────────────────────────────────────────
+         MODULE 3 · RESILIENCE FUNNEL
+    ──────────────────────────────────────── -->
+    <div class="bg-white border border-gray-100 rounded-3xl overflow-hidden card-shadow slide-up" style="animation-delay:.1s">
+      <div class="px-6 pt-6 pb-4 border-b border-gray-100">
+        <div class="flex items-center space-x-2 mb-1">
+          <div class="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(224,102,152,.12)">
+            <svg class="w-4 h-4" style="color:#e06698" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h18M7 8l10 0M10 12h4M11 16h2M12 20h0"/></svg>
+          </div>
+          <span class="font-heading font-bold text-dark text-sm">Resilience Funnel</span>
+        </div>
+        <p class="text-xs text-muted ml-10">The numbers shrink. This is selection, not failure.</p>
+      </div>
+
+      <div class="px-6 py-5">
+        <!-- Context card -->
+        <div class="bg-gray-50 rounded-2xl px-4 py-3 mb-5">
+          <div class="text-xs font-bold text-dark mb-0.5">Your fertilization report · Day 1</div>
+          <div class="text-[10px] text-muted leading-relaxed">12 retrieved → 10 mature → 9 fertilized. Day 5 blast report expected tomorrow 10–11 AM.</div>
+        </div>
+
+        <!-- Funnel stages -->
+        <div id="funnel-stages" class="space-y-2"></div>
+
+        <!-- Bottom insight -->
+        <div class="mt-5 bg-careblue/5 border border-careblue/15 rounded-2xl px-4 py-3.5">
+          <div class="text-[10px] font-bold text-careblue uppercase tracking-wider mb-1.5">Statistical Context</div>
+          <p class="text-xs text-muted leading-relaxed">Based on your numbers, the model predicts <strong class="text-dark">2–4 euploid embryos</strong>. One healthy embryo carries a <strong class="text-dark">50–65%</strong> live birth rate. You have a good shot.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ────────────────────────────────────────
+         MODULE 2 · FINANCIAL PIVOT CALCULATOR
+    ──────────────────────────────────────── -->
+    <div class="lg:col-span-2 bg-white border border-gray-100 rounded-3xl overflow-hidden card-shadow slide-up" style="animation-delay:.15s">
+      <div class="px-6 pt-6 pb-4 border-b border-gray-100 flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 bg-careyellow/30 rounded-xl flex items-center justify-center flex-shrink-0">
+            <svg class="w-4 h-4 text-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19h16a2 2 0 002-2V7a2 2 0 00-2-2H4a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+          </div>
+          <div>
+            <span class="font-heading font-bold text-dark text-sm">Payment Strategy</span>
+            <span class="text-[10px] text-muted ml-2">IVF Cycle 2 · Retrieval + Lab · $22,500</span>
+          </div>
+        </div>
+        <div class="flex items-center space-x-1 bg-gray-100 rounded-xl p-1">
+          <button id="tab-insurance" onclick="switchPayTab('insurance')" class="pay-tab active">Insurance</button>
+          <button id="tab-cash"      onclick="switchPayTab('cash')"      class="pay-tab">Cash</button>
+          <button id="tab-finance"   onclick="switchPayTab('finance')"   class="pay-tab">Finance</button>
+        </div>
+      </div>
+
+      <!-- Insurance tab -->
+      <div id="pay-insurance" class="p-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+          <!-- Lifetime Max meter -->
+          <div class="md:col-span-2 bg-red-50 border border-red-100 rounded-2xl p-5">
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold text-red-600 uppercase tracking-wider">Lifetime Max Impact</span>
+              <span class="text-xs font-bold text-red-500">Anthem BlueCross PPO · 2026</span>
+            </div>
+            <div class="flex justify-between text-[10px] text-muted font-medium mb-1.5">
+              <span>Already used: $12,400</span>
+              <span>Remaining: <strong class="text-red-600">$2,600</strong></span>
+            </div>
+            <div class="h-3 bg-gray-100 rounded-full overflow-hidden mb-1">
+              <div class="h-full rounded-full flex" style="width:100%">
+                <div class="bg-red-400 rounded-l-full" style="width:82.7%"></div>
+                <div class="bg-careyellow" style="width:17.3%"></div>
+              </div>
+            </div>
+            <div class="flex justify-between text-[10px] text-muted mt-1">
+              <span class="flex items-center space-x-1"><span class="w-2 h-2 bg-red-400 rounded-full inline-block"></span><span>Used ($12,400)</span></span>
+              <span class="flex items-center space-x-1"><span class="w-2 h-2 bg-careyellow rounded-full inline-block"></span><span>Remaining ($2,600)</span></span>
+              <span class="font-bold text-dark">$15,000 max</span>
+            </div>
+            <div class="mt-3 bg-red-100 border border-red-200 rounded-xl px-3 py-2 text-[10px] text-red-700 font-medium leading-relaxed">
+              ⚠ This cycle exhausts your full remaining coverage. A 2nd cycle would be entirely out-of-pocket.
+            </div>
+          </div>
+
+          <!-- Your cost breakdown -->
+          <div class="bg-gray-50 border border-gray-100 rounded-2xl p-5">
+            <div class="text-xs font-bold text-muted uppercase tracking-wider mb-4">Your Cost · Insurance Path</div>
+            <div class="space-y-2 mb-4">
+              <div class="flex justify-between text-sm"><span class="text-muted">Total cycle cost</span><span class="font-bold text-dark">$22,500</span></div>
+              <div class="flex justify-between text-sm"><span class="text-muted">Insurance pays</span><span class="font-bold text-green-600">−$2,600</span></div>
+              <div class="border-t border-gray-200 pt-2 flex justify-between text-base"><span class="font-bold text-dark">You owe</span><span class="font-heading font-bold text-dark text-xl">$19,900</span></div>
+            </div>
+            <div class="text-[10px] text-muted leading-relaxed">Deductible met ✓ · 20% coinsurance applies up to your remaining max.</div>
+          </div>
+        </div>
+
+        <!-- Delta callout -->
+        <div class="bg-careyellow/15 border border-careyellow/50 rounded-2xl px-5 py-4 flex items-center space-x-4">
+          <div class="w-10 h-10 bg-careyellow rounded-2xl flex items-center justify-center flex-shrink-0 peace-pulse">
+            <svg class="w-5 h-5 text-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+          </div>
+          <div class="flex-1">
+            <div class="text-sm font-bold text-dark mb-0.5">Cash is cheaper by <span class="text-careblue">$775</span> this cycle.</div>
+            <div class="text-xs text-muted">The clinic's 15% cash discount ($19,125) beats your insurance out-of-pocket ($19,900) because your lifetime max is nearly depleted. Switch to Cash tab to see the full picture.</div>
+          </div>
+          <button onclick="switchPayTab('cash')" class="text-xs font-bold text-careblue bg-white border border-careblue/30 px-3 py-1.5 rounded-xl hover:bg-careblue/5 transition-colors flex-shrink-0">See Cash →</button>
+        </div>
+      </div>
+
+      <!-- Cash tab -->
+      <div id="pay-cash" class="hidden p-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+          <!-- Cash breakdown -->
+          <div class="md:col-span-2 bg-careblue/5 border border-careblue/15 rounded-2xl p-5">
+            <div class="text-xs font-bold text-careblue uppercase tracking-wider mb-4">Cash Pay Breakdown</div>
+            <div class="space-y-2.5 mb-4">
+              <div class="flex justify-between text-sm"><span class="text-muted">List price</span><span class="font-bold text-dark">$22,500</span></div>
+              <div class="flex justify-between text-sm"><span class="text-muted">Clinic cash discount (15%)</span><span class="font-bold text-green-600">−$3,375</span></div>
+              <div class="border-t border-careblue/10 pt-2.5 flex justify-between items-center">
+                <span class="font-bold text-dark">Cash price</span>
+                <span class="font-heading font-bold text-dark text-2xl">$19,125</span>
+              </div>
+            </div>
+            <!-- vs insurance badge -->
+            <div class="bg-green-50 border border-green-100 rounded-xl px-3 py-2 flex items-center space-x-2">
+              <svg class="w-3.5 h-3.5 text-green-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              <span class="text-[10px] font-bold text-green-700">$775 less than your insurance out-of-pocket ($19,900)</span>
+            </div>
+          </div>
+
+          <!-- Preserved coverage -->
+          <div class="bg-gray-50 border border-gray-100 rounded-2xl p-5">
+            <div class="text-xs font-bold text-muted uppercase tracking-wider mb-4">If You Pay Cash</div>
+            <div class="space-y-3">
+              <div>
+                <div class="text-[10px] text-muted mb-1">Savings vs. list</div>
+                <div class="font-heading text-xl font-bold text-dark">$3,375</div>
+              </div>
+              <div class="border-t border-gray-200 pt-3">
+                <div class="text-[10px] text-muted mb-1">Lifetime max preserved</div>
+                <div class="font-heading text-xl font-bold text-careblue">$2,600</div>
+                <div class="text-[10px] text-muted mt-0.5 leading-relaxed">Available for monitoring or labs in a future cycle.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-dark rounded-2xl px-5 py-4 flex items-center space-x-4">
+          <div class="flex-1">
+            <div class="text-xs font-bold text-careyellow uppercase tracking-wider mb-1">The Pivot Point</div>
+            <div class="text-sm text-white/90 leading-relaxed">Pay cash now → save $775 immediately + preserve $2,600 of lifetime coverage for a potential 2nd cycle. If you use insurance, you save nothing this cycle and deplete all remaining coverage.</div>
+          </div>
+          <div class="text-right flex-shrink-0">
+            <div class="text-[10px] text-white/50 mb-0.5">Net advantage · cash</div>
+            <div class="font-heading text-2xl font-bold text-careyellow">$3,375</div>
+            <div class="text-[10px] text-white/40">vs. list price</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Finance tab -->
+      <div id="pay-finance" class="hidden p-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+          <div class="bg-gray-50 border border-gray-100 rounded-2xl p-5">
+            <div class="text-xs font-bold text-muted uppercase tracking-wider mb-4">CapexMD · 24 months</div>
+            <div class="space-y-2">
+              <div class="flex justify-between text-sm"><span class="text-muted">Loan amount</span><span class="font-bold text-dark">$19,125</span></div>
+              <div class="flex justify-between text-sm"><span class="text-muted">APR</span><span class="font-bold text-dark">5.9%</span></div>
+              <div class="flex justify-between text-sm"><span class="text-muted">Term</span><span class="font-bold text-dark">24 months</span></div>
+              <div class="border-t border-gray-200 pt-2 flex justify-between items-center">
+                <span class="font-bold text-dark">Monthly payment</span>
+                <span class="font-heading text-2xl font-bold text-dark">$848</span>
+              </div>
+              <div class="flex justify-between text-sm"><span class="text-muted">Total paid</span><span class="font-bold text-muted">$20,352</span></div>
+            </div>
+          </div>
+          <div class="bg-gray-50 border border-gray-100 rounded-2xl p-5">
+            <div class="text-xs font-bold text-muted uppercase tracking-wider mb-4">Prosper Healthcare · 36 months</div>
+            <div class="space-y-2">
+              <div class="flex justify-between text-sm"><span class="text-muted">Loan amount</span><span class="font-bold text-dark">$19,125</span></div>
+              <div class="flex justify-between text-sm"><span class="text-muted">APR</span><span class="font-bold text-dark">7.9%</span></div>
+              <div class="flex justify-between text-sm"><span class="text-muted">Term</span><span class="font-bold text-dark">36 months</span></div>
+              <div class="border-t border-gray-200 pt-2 flex justify-between items-center">
+                <span class="font-bold text-dark">Monthly payment</span>
+                <span class="font-heading text-2xl font-bold text-dark">$597</span>
+              </div>
+              <div class="flex justify-between text-sm"><span class="text-muted">Total paid</span><span class="font-bold text-muted">$21,492</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-careyellow/15 border border-careyellow/40 rounded-2xl px-5 py-3 text-xs text-muted">
+          <strong class="text-dark">Both options assume the $19,125 cash price.</strong> Financing lets you start treatment immediately while preserving your $2,600 lifetime coverage. Rates shown are illustrative — apply directly through each lender for a hard quote.
+        </div>
+      </div>
+    </div>
+
+    <!-- ────────────────────────────────────────
+         MODULE 4 · SOLO-SYNC CONDUCTOR
+    ──────────────────────────────────────── -->
+    <div class="lg:col-span-2 slide-up" style="animation-delay:.2s">
+      <div id="sync-launcher" class="rounded-3xl overflow-hidden" style="background:#1A1A1B; border:1.5px solid #2a2a2b">
+        <div class="px-6 pt-6 pb-5 flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+          <div class="flex items-center space-x-4">
+            <div id="sync-indicator" class="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 injection-active" style="background:rgba(255,237,74,.15); border:1.5px solid rgba(255,237,74,.35)">
+              <svg class="w-7 h-7 text-careyellow" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <div>
+              <div class="text-[10px] font-bold text-careyellow/70 uppercase tracking-[.14em] mb-1">Solo-Sync Conductor · 9 PM Protocol</div>
+              <div class="font-heading text-xl font-bold text-white">It's injection time. We're with you.</div>
+              <div class="text-sm text-white/50 mt-0.5">7-step safety protocol · Bubble check · Breath · Hold</div>
+            </div>
+          </div>
+          <div class="flex items-center space-x-3 flex-shrink-0">
+            <div class="text-right">
+              <div class="text-[10px] text-white/40 font-medium">Tonight</div>
+              <div class="text-xs font-bold text-white">Gonal-F 225 IU · Cetrotide 0.25mg</div>
+            </div>
+            <button onclick="openSyncConductor()" class="bg-careyellow text-dark font-heading font-bold text-sm px-6 py-3.5 rounded-2xl hover:bg-careyellow/90 transition-colors flex items-center space-x-2 injection-active">
+              <span>Start Protocol</span>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
+            </button>
+          </div>
+        </div>
+        <!-- Step preview row -->
+        <div class="border-t border-white/[.06] px-6 py-3 flex items-center space-x-6 overflow-x-auto">
+          <span class="text-[10px] font-bold text-white/25 uppercase tracking-wider flex-shrink-0">7 Steps</span>
+          <div class="flex items-center space-x-4">
+            <div id="sync-step-preview"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /grid -->
+</div><!-- /content -->
+
+<!-- ══════════════════════════════════════════ SOLO-SYNC FULL-SCREEN OVERLAY -->
+<div id="sync-overlay" class="sync-overlay">
+  <!-- Top bar -->
+  <div class="w-full max-w-lg flex items-center justify-between mb-8">
+    <button onclick="closeSyncConductor()" class="flex items-center space-x-1.5 text-white/40 hover:text-white/70 transition-colors text-sm font-medium">
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      <span>Exit</span>
+    </button>
+    <div id="sync-step-counter" class="text-xs font-bold text-white/30 uppercase tracking-widest">Step 1 of 7</div>
+    <div class="w-10"></div>
+  </div>
+
+  <!-- Progress dots -->
+  <div class="flex items-center space-x-2 mb-10">
+    <div id="sync-progress-dots" class="flex space-x-2"></div>
+  </div>
+
+  <!-- Main card -->
+  <div class="w-full max-w-lg">
+    <!-- Timer ring (only visible for timed steps) -->
+    <div id="sync-timer-wrap" class="hidden flex-col items-center mb-6">
+      <div class="relative w-32 h-32 mb-2">
+        <svg viewBox="0 0 100 100" class="w-full h-full">
+          <circle cx="50" cy="50" r="42" class="timer-ring-track" stroke-width="5"/>
+          <circle cx="50" cy="50" r="42" id="sync-ring" class="timer-ring-fill"
+            stroke-width="5" stroke="#00BAFF"
+            stroke-dasharray="263.9" stroke-dashoffset="0"/>
+        </svg>
+        <div class="absolute inset-0 flex flex-col items-center justify-center">
+          <div id="sync-timer-num" class="font-heading text-3xl font-bold text-white leading-none"></div>
+          <div id="sync-timer-label" class="text-[10px] text-white/40 font-medium mt-0.5"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step content -->
+    <div id="sync-step-content" class="bg-white/[.04] border border-white/[.08] rounded-3xl p-7 mb-5">
+      <div id="sync-step-num" class="font-heading text-5xl font-bold text-white/10 mb-3 leading-none"></div>
+      <div id="sync-step-title" class="font-heading text-2xl font-bold text-white mb-1"></div>
+      <div id="sync-step-subtitle" class="text-sm font-semibold mb-4"></div>
+      <p id="sync-step-instruction" class="text-sm text-white/60 leading-relaxed"></p>
+    </div>
+
+    <!-- CTA button -->
+    <button id="sync-cta" onclick="advanceSyncStep()" class="w-full font-heading font-bold text-base py-4 rounded-2xl transition-colors">Continue →</button>
+
+    <!-- Back link -->
+    <button id="sync-back" onclick="retreatSyncStep()" class="w-full mt-3 text-xs text-white/25 hover:text-white/50 transition-colors py-2">← Back</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="state.js"></script>
+<script>
+// ─── i18n fallback ────────────────────────────────────────────────
+function t(key) { return (window.I18N && window.I18N.t) ? window.I18N.t(key) : key; }
+
+// ══════════════════════════════════════════════════════════════════
+// MODULE 1 · PHARMACY STATION DATA + LOGIC
+// ══════════════════════════════════════════════════════════════════
+const SHIPMENT_RAW = [
+  { id:'p01', name:'Gonal-F 450 IU Pen',            qty:'3 pens',    storage:'fridge', notes:'Keep upright. Use within 28 days of opening.' },
+  { id:'p02', name:'Menopur 75 IU',                 qty:'10 vials',  storage:'fridge', notes:'Protect from light. Mix with provided diluent.' },
+  { id:'p03', name:'Lupron Trigger 1mg/0.2mL',      qty:'1 kit',     storage:'fridge', notes:'Do not freeze. Use on trigger night only.' },
+  { id:'p04', name:'Cetrotide 0.25mg',               qty:'7 kits',   storage:'room',   notes:'Reconstitute immediately before each injection.' },
+  { id:'p05', name:'Progesterone Suppositories',    qty:'30 count',  storage:'room',   notes:'Store in original blister pack. Protect from heat.' },
+  { id:'p06', name:'Needles 27G × ½"',              qty:'30 pack',   storage:'room',   notes:'Sterile. Keep sealed until use.' },
+  { id:'p07', name:'Alcohol Swabs',                  qty:'50 pack',  storage:'room',   notes:'Standard ambient storage.' },
+  { id:'p08', name:'Sharps Container 1.4L',          qty:'1 unit',   storage:'room',   notes:'Required for safe needle disposal.' },
+];
+
+function scanUnboxingDelivery(items) {
+  const fridge = items.filter(i => i.storage === 'fridge');
+  const room   = items.filter(i => i.storage === 'room');
+  return { fridge, room, total: items.length };
+}
+
+function getPharmacyChecked() {
+  try { return new Set(JSON.parse(localStorage.getItem('cs_pharmacy_checklist') || '[]')); }
+  catch(_) { return new Set(); }
+}
+function savePharmacyChecked(set) {
+  localStorage.setItem('cs_pharmacy_checklist', JSON.stringify([...set]));
+}
+
+function renderPharmacyItem(item, checked) {
+  const isChecked = checked.has(item.id);
+  return `<div class="item-row ${isChecked ? 'checked' : ''} rounded-xl px-3 py-2.5 flex items-center space-x-3" onclick="togglePharmacyItem('${item.id}')">
+    <div class="check-circle w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center border-2 transition-all ${isChecked ? 'bg-careblue border-careblue' : 'border-gray-200'}">
+      ${isChecked ? '<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>' : ''}
+    </div>
+    <div class="flex-1 min-w-0">
+      <div class="text-sm font-bold text-dark leading-tight">${item.name}</div>
+      <div class="text-[10px] text-muted mt-0.5">${item.qty} · ${item.notes}</div>
+    </div>
+  </div>`;
+}
+
+function renderPharmacy() {
+  const result  = scanUnboxingDelivery(SHIPMENT_RAW);
+  const checked = getPharmacyChecked();
+  document.getElementById('fridge-list').innerHTML = result.fridge.map(i => renderPharmacyItem(i, checked)).join('');
+  document.getElementById('room-list').innerHTML   = result.room.map(i => renderPharmacyItem(i, checked)).join('');
+  const count = checked.size;
+  document.getElementById('pharmacy-progress').textContent = `${count} of ${result.total}`;
+  document.getElementById('pharmacy-complete').classList.toggle('hidden', count < result.total);
+}
+
+function togglePharmacyItem(id) {
+  const checked = getPharmacyChecked();
+  if (checked.has(id)) checked.delete(id); else checked.add(id);
+  savePharmacyChecked(checked);
+  renderPharmacy();
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MODULE 3 · RESILIENCE FUNNEL DATA + LOGIC
+// ══════════════════════════════════════════════════════════════════
+const MAX_EGGS = 12;
+
+const FUNNEL_STAGES = [
+  { label:'Eggs Retrieved',   count:12, proj:null, benchDesc:'Starting count',          status:'neutral',    projected:false },
+  { label:'Mature (MII)',      count:10, proj:null, benchDesc:'~80% expected',           status:'green',      projected:false },
+  { label:'Fertilized (2PN)', count: 9, proj:null, benchDesc:'~70% of retrieved',       status:'green',      projected:false },
+  { label:'Day 3 Cleavage',   count: 8, proj:null, benchDesc:'~95% of fertilized',      status:'amber',      projected:false },
+  { label:'Day 5 Blastocyst', count:null,proj:4,   benchDesc:'~45% of fertilized',      status:null,         projected:true  },
+  { label:'PGT Biopsied',     count:null,proj:4,   benchDesc:'~90% of Day 5 blasts',    status:null,         projected:true  },
+  { label:'Euploid (Normal)', count:null,proj:2,   benchDesc:'~60% of tested',          status:null,         projected:true  },
+];
+
+function renderFunnel() {
+  const el = document.getElementById('funnel-stages');
+  el.innerHTML = FUNNEL_STAGES.map(stage => {
+    const display = stage.count ?? stage.proj;
+    const pct     = Math.round((display / MAX_EGGS) * 100);
+    const width   = Math.max(18, pct);
+
+    let barBg, textClr, badge;
+    if (stage.projected) {
+      barBg   = 'bg-gray-50 border border-dashed border-gray-200';
+      textClr = 'text-gray-400';
+      badge   = `<span class="text-[10px] text-gray-400 font-bold">~${pct}%</span>`;
+    } else if (stage.status === 'green') {
+      barBg   = 'bg-green-50 border border-green-100';
+      textClr = 'text-green-700';
+      badge   = `<span class="text-[10px] text-green-600 font-bold">✓ ${pct}%</span>`;
+    } else if (stage.status === 'amber') {
+      barBg   = 'bg-careyellow/20 border border-careyellow/40';
+      textClr = 'text-dark';
+      badge   = `<span class="text-[10px] text-dark font-bold">${pct}%</span>`;
+    } else {
+      barBg   = 'bg-gray-50 border border-gray-100';
+      textClr = 'text-dark';
+      badge   = `<span class="text-[10px] text-muted font-bold">${pct}%</span>`;
+    }
+
+    const labelColor = stage.projected ? 'text-gray-400' : 'text-dark';
+    const projTag    = stage.projected ? '<span class="text-[9px] text-gray-400 font-bold ml-1 uppercase tracking-wider">projected</span>' : '';
+
+    return `<div class="funnel-step">
+      <div class="relative h-10 mb-1">
+        <div class="absolute inset-0 bg-gray-50 rounded-xl"></div>
+        <div class="${barBg} absolute inset-y-0 left-0 rounded-xl funnel-bar flex items-center px-3" style="width:${width}%">
+          <span class="text-sm font-bold ${textClr} whitespace-nowrap">${display}</span>
+        </div>
+        <div class="absolute right-2 inset-y-0 flex items-center">${badge}</div>
+      </div>
+      <div class="flex items-baseline space-x-1 pl-1 mb-2.5">
+        <span class="text-xs font-bold ${labelColor}">${stage.label}</span>${projTag}
+        <span class="text-[9px] text-muted">· ${stage.benchDesc}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MODULE 2 · FINANCIAL PIVOT TABS
+// ══════════════════════════════════════════════════════════════════
+function switchPayTab(tab) {
+  ['insurance','cash','finance'].forEach(t => {
+    document.getElementById(`pay-${t}`).classList.toggle('hidden', t !== tab);
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === tab);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MODULE 4 · SOLO-SYNC CONDUCTOR
+// ══════════════════════════════════════════════════════════════════
+const SYNC_STEPS = [
+  {
+    num: '①', title: 'Bubble Check', subtitle: 'Clear the air',
+    instruction: 'Hold the syringe vertically with the needle pointing up. Tap the barrel 2–3 times firmly with your fingernail. Push the plunger gently until a single droplet appears at the needle tip. The air is gone.',
+    timer: null, accentColor: '#00BAFF', ctaLabel: 'Air is cleared →', isFinal: false
+  },
+  {
+    num: '②', title: 'Take a Breath', subtitle: 'Ground yourself first',
+    instruction: 'Before you touch the site, breathe in slowly through your nose for 4 counts. Hold it at the top. You are calm. You have done this before. You can do this.',
+    timer: { seconds: 8, label: 'Breathing in…', stroke: '#FFED4A' }, accentColor: '#FFED4A', ctaLabel: 'I\'m ready →', isFinal: false
+  },
+  {
+    num: '③', title: 'Site Prep', subtitle: 'Alcohol swab',
+    instruction: 'Swab your injection site with an alcohol pad using small circular motions. Hold here for 30 seconds — the site must be fully dry before you inject. Do not touch the area after swabbing.',
+    timer: { seconds: 30, label: 'Drying…', stroke: '#00BAFF' }, accentColor: '#00BAFF', ctaLabel: 'Site is dry →', isFinal: false
+  },
+  {
+    num: '④', title: 'Pinch & Insert', subtitle: 'One smooth motion',
+    instruction: 'Gently pinch a 1-inch fold of skin between your thumb and forefinger. Insert the needle at a 90° angle with one confident, unhesitating motion. You do not need to see it happen — feel it.',
+    timer: null, accentColor: '#00BAFF', ctaLabel: 'Needle is in →', isFinal: false
+  },
+  {
+    num: '⑤', title: 'Inject Slowly', subtitle: 'Count to ten',
+    instruction: 'Depress the plunger slowly and steadily. Do not rush. 10 full seconds lets the medication flow without discomfort. Keep your grip loose and your breath even.',
+    timer: { seconds: 10, label: 'Injecting…', stroke: '#00BAFF' }, accentColor: '#00BAFF', ctaLabel: 'Plunger depressed →', isFinal: false
+  },
+  {
+    num: '⑥', title: 'Hold & Exhale', subtitle: 'The final ten',
+    instruction: 'Keep the needle in place. Do not pull out yet. Breathe out slowly through your mouth over 10 seconds. This prevents medication from tracking back through the needle track.',
+    timer: { seconds: 10, label: 'Hold…', stroke: '#FFED4A' }, accentColor: '#FFED4A', ctaLabel: 'Held for 10 seconds →', isFinal: false
+  },
+  {
+    num: '⑦', title: 'Remove & Log', subtitle: 'You did it.',
+    instruction: 'Remove the needle smoothly — no twisting, no hesitating. Apply gentle pressure with a clean pad. Do not rub. Discard the needle in your sharps container. Your dose is complete.',
+    timer: null, accentColor: '#10B981', ctaLabel: 'Log Dose Complete ✓', isFinal: true
+  }
+];
+
+const SS = { step: 0, timerInterval: null, timerSec: 0 };
+
+function renderSyncStepPreview() {
+  const el = document.getElementById('sync-step-preview');
+  if (!el) return;
+  el.innerHTML = SYNC_STEPS.map((s, i) => `
+    <div class="flex items-center space-x-1.5 flex-shrink-0">
+      <div class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold" style="background:rgba(255,255,255,.06); color:rgba(255,255,255,.3)">${i+1}</div>
+      <span class="text-[10px] text-white/30 font-medium whitespace-nowrap">${s.title}</span>
+      ${i < SYNC_STEPS.length-1 ? '<span class="text-white/15 text-[10px]">·</span>' : ''}
+    </div>
+  `).join('');
+}
+
+function openSyncConductor() {
+  SS.step = 0;
+  document.getElementById('sync-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  renderSyncStep();
+}
+
+function closeSyncConductor() {
+  clearSyncTimer();
+  document.getElementById('sync-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+}
+
+function renderSyncStep() {
+  clearSyncTimer();
+  const step = SYNC_STEPS[SS.step];
+  const total = SYNC_STEPS.length;
+
+  // Counter
+  document.getElementById('sync-step-counter').textContent = `Step ${SS.step+1} of ${total}`;
+
+  // Progress dots
+  document.getElementById('sync-progress-dots').innerHTML = SYNC_STEPS.map((_,i) => `
+    <div class="rounded-full transition-all" style="
+      width: ${i === SS.step ? '20px' : '6px'};
+      height: 6px;
+      background: ${i <= SS.step ? (SYNC_STEPS[SS.step].accentColor) : 'rgba(255,255,255,.12)'};
+    "></div>
+  `).join('');
+
+  // Step content
+  document.getElementById('sync-step-num').textContent = step.num;
+  document.getElementById('sync-step-title').textContent = step.title;
+  document.getElementById('sync-step-subtitle').style.color = step.accentColor;
+  document.getElementById('sync-step-subtitle').textContent = step.subtitle;
+  document.getElementById('sync-step-instruction').textContent = step.instruction;
+
+  // CTA button
+  const cta = document.getElementById('sync-cta');
+  cta.textContent = step.ctaLabel;
+  if (step.isFinal) {
+    cta.style.background = '#10B981';
+    cta.style.color = '#fff';
+  } else {
+    cta.style.background = step.accentColor;
+    cta.style.color = step.accentColor === '#FFED4A' ? '#1A1A1B' : '#fff';
+  }
+
+  // Back button
+  document.getElementById('sync-back').style.visibility = SS.step === 0 ? 'hidden' : 'visible';
+
+  // Timer
+  const timerWrap = document.getElementById('sync-timer-wrap');
+  if (step.timer) {
+    timerWrap.classList.remove('hidden');
+    timerWrap.classList.add('flex');
+    const ring = document.getElementById('sync-ring');
+    ring.style.stroke = step.timer.stroke;
+    ring.style.transition = 'none';
+    ring.style.strokeDashoffset = '0';
+    document.getElementById('sync-timer-num').textContent = step.timer.seconds;
+    document.getElementById('sync-timer-label').textContent = step.timer.label;
+    SS.timerSec = step.timer.seconds;
+    const circ = 263.9;
+    const total_s = step.timer.seconds;
+    setTimeout(() => {
+      ring.style.transition = 'stroke-dashoffset 1s linear';
+      SS.timerInterval = setInterval(() => {
+        SS.timerSec--;
+        document.getElementById('sync-timer-num').textContent = Math.max(0, SS.timerSec);
+        ring.style.strokeDashoffset = String(circ * (1 - SS.timerSec / total_s));
+        if (SS.timerSec <= 0) {
+          clearSyncTimer();
+          // Pulse the CTA when timer completes
+          const ctaEl = document.getElementById('sync-cta');
+          ctaEl.style.transform = 'scale(1.02)';
+          setTimeout(() => { ctaEl.style.transform = ''; }, 200);
+        }
+      }, 1000);
+    }, 50);
+  } else {
+    timerWrap.classList.add('hidden');
+    timerWrap.classList.remove('flex');
+  }
+}
+
+function clearSyncTimer() {
+  if (SS.timerInterval) { clearInterval(SS.timerInterval); SS.timerInterval = null; }
+}
+
+function advanceSyncStep() {
+  const step = SYNC_STEPS[SS.step];
+  if (step.isFinal) {
+    // Log dose via CARE_STATE
+    if (window.CARE_STATE) CARE_STATE.emitLoopClosed('m1', 'Gonal-F');
+    closeSyncConductor();
+    showSyncComplete();
+    return;
+  }
+  if (SS.step < SYNC_STEPS.length - 1) {
+    SS.step++;
+    renderSyncStep();
+  }
+}
+
+function retreatSyncStep() {
+  if (SS.step > 0) { SS.step--; renderSyncStep(); }
+}
+
+function showSyncComplete() {
+  const launcher = document.getElementById('sync-launcher');
+  launcher.innerHTML = `
+    <div class="px-6 py-8 flex flex-col items-center text-center">
+      <div class="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style="background:rgba(16,185,129,.15); border:1.5px solid rgba(16,185,129,.3)">
+        <svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+      </div>
+      <div class="font-heading text-xl font-bold text-white mb-1">Dose logged. Protocol complete.</div>
+      <div class="text-sm text-white/50">Tonight's injection is done and synced with your clinic.</div>
+    </div>
+  `;
+}
+
+// ─── Init ─────────────────────────────────────────────────────────
+renderPharmacy();
+renderFunnel();
+renderSyncStepPreview();
+</script>
+<script src="i18n.js"></script>
+<script src="lexicon.js"></script>
+</body>
+</html>

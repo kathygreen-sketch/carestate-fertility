@@ -1,0 +1,31 @@
+{
+  "path_id": "fet_004",
+  "name": "Frozen Embryo Transfer (FET)",
+  "phases": [
+    {
+      "phase_name": "Endometrial Prep",
+      "milestones": ["Estrogen_Start", "Lining_Check_Ultrasound"],
+      "primary_action": "Lining Verification",
+      "pro_trigger": "In-Clinic_Capture_Active"
+    },
+    {
+      "phase_name": "Progesterone Phase",
+      "milestones": ["PIO_Injection_Start", "Transfer_Timing_Finalized"],
+      "primary_action": "CRITICAL: Log PIO Injection",
+      "pro_trigger": "9_PM_SOS_Critical_Precision",
+      "timing_tolerance": "Plus_Minus_15_Minutes"
+    },
+    {
+      "phase_name": "Transfer Day",
+      "milestones": ["Embryo_Thaw_Verified", "Transfer_Complete"],
+      "primary_action": "Transfer Day Mode",
+      "pro_trigger": "Retrieval_Mode_Light"
+    },
+    {
+      "phase_name": "Post-Transfer Wait",
+      "milestones": ["PIO_Maintenance", "Beta_Pregnancy_Test"],
+      "primary_action": "Medication Adherence",
+      "pro_trigger": "Sanctuary_Mode_Active"
+    }
+  ]
+}

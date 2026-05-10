@@ -1,0 +1,37 @@
+{
+  "path_id": "iui_002",
+  "name": "Intrauterine Insemination (IUI)",
+  "phases": [
+    {
+      "phase_name": "Ovulation Induction",
+      "milestones": ["Meds_Ordered", "Cycle_Day_3_Scan"],
+      "primary_action": "Begin Oral Medications",
+      "pro_trigger": "Med_Inventory_Check_T_Minus_24h"
+    },
+    {
+      "phase_name": "Monitoring",
+      "milestones": ["Follicle_Scan", "LH_Surge_Detected"],
+      "primary_action": "In-Clinic Ultrasound",
+      "pro_trigger": "In-Clinic_Capture_Active"
+    },
+    {
+      "phase_name": "The Trigger",
+      "milestones": ["Trigger_Injection_Confirmed"],
+      "primary_action": "ADMINISTER TRIGGER SHOT",
+      "pro_trigger": "9_PM_SOS_Active",
+      "crisis_bridge_logic": "Auto_Escalation_If_No_Log_At_T_Minus_15m"
+    },
+    {
+      "phase_name": "Insemination Day",
+      "milestones": ["Sperm_Prep_Complete", "Insemination_Performed"],
+      "primary_action": "Procedure Check-In",
+      "pro_trigger": "Retrieval_Mode_Light"
+    },
+    {
+      "phase_name": "The Wait",
+      "milestones": ["Progesterone_Support", "Pregnancy_Test"],
+      "primary_action": "Daily Support Check-in",
+      "pro_trigger": "Sanctuary_Mode_Active"
+    }
+  ]
+}

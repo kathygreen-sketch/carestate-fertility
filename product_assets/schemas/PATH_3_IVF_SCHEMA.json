@@ -1,0 +1,37 @@
+{
+  "path_id": "ivf_003",
+  "name": "In Vitro Fertilization (IVF Full Cycle)",
+  "phases": [
+    {
+      "phase_name": "Suppression & Prep",
+      "milestones": ["Birth_Control_Start", "Baseline_Labs"],
+      "primary_action": "Baseline Verification"
+    },
+    {
+      "phase_name": "Ovarian Stimulation",
+      "milestones": ["Day_1_Stim", "Monitoring_Scan_1", "Monitoring_Scan_3"],
+      "primary_action": "Log Multi-Med Injections",
+      "pro_trigger": "9_PM_SOS_Advanced_Multi_Med",
+      "safety_signal_trigger": "Med_Inventory_Check_T_Minus_24h"
+    },
+    {
+      "phase_name": "The Retrieval",
+      "milestones": ["Trigger_Shot", "Egg_Retrieval"],
+      "primary_action": "Retrieval Day Mode",
+      "pro_trigger": "Retrieval_Mode_Active",
+      "delegated_view_active": true
+    },
+    {
+      "phase_name": "Lab & Fertilization",
+      "milestones": ["Fertilization_Report", "Day_3_Update", "Day_5_Blast_Report"],
+      "primary_action": "Review Lab Results",
+      "pro_trigger": "In-Clinic_Capture_Voice_Note"
+    },
+    {
+      "phase_name": "Transfer (Fresh/Frozen)",
+      "milestones": ["Transfer_Procedure", "Beta_Test_1"],
+      "primary_action": "Transfer Day Navigation",
+      "pro_trigger": "Sanctuary_Mode_Active"
+    }
+  ]
+}

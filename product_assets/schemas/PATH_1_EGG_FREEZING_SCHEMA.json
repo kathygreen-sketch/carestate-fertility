@@ -1,0 +1,40 @@
+{
+  "path_id": "egg_freezing_001",
+  "name": "Egg Freezing (Elective/Medical)",
+  "phases": [
+    {
+      "phase_name": "Prep & Baseline",
+      "milestones": ["Insurance_Verified", "Meds_Ordered", "Baseline_Ultrasound"],
+      "primary_action": "Schedule Baseline Scan",
+      "pro_trigger": "In-Clinic_Capture_Active"
+    },
+    {
+      "phase_name": "Stimulation",
+      "milestones": ["Day_1_Injections", "Monitoring_Scan_1", "Monitoring_Scan_2"],
+      "primary_action": "Log Injections",
+      "pro_trigger": "9_PM_SOS_Active",
+      "safety_signal_trigger": "Med_Inventory_Check_T_Minus_24h"
+    },
+    {
+      "phase_name": "The Trigger",
+      "milestones": ["Trigger_Shot_Verification", "Surgery_Check_In"],
+      "primary_action": "ADMINISTER TRIGGER SHOT",
+      "pro_trigger": "9_PM_SOS_Critical_Precision",
+      "crisis_bridge_logic": "Auto_Escalation_If_No_Log_At_T_Minus_15m"
+    },
+    {
+      "phase_name": "Retrieval Day",
+      "milestones": ["Anesthesia_Check", "Pickup_Confirmed"],
+      "primary_action": "Retrieval Day Mode",
+      "pro_trigger": "Retrieval_Mode_Active",
+      "delegated_view_active": true
+    },
+    {
+      "phase_name": "Recovery",
+      "milestones": ["Post_Op_Report", "Result_Summary"],
+      "primary_action": "Review Results",
+      "pro_trigger": "Sanctuary_Mode_Active",
+      "failure_protocol_trigger": "If_Egg_Count < Threshold"
+    }
+  ]
+}

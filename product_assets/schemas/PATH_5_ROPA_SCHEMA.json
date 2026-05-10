@@ -1,0 +1,31 @@
+{
+  "path_id": "ropa_005",
+  "name": "ROPA (Reciprocal IVF)",
+  "phases": [
+    {
+      "phase_name": "Dual Synchronization",
+      "milestones": ["Partner_A_Stim_Start", "Partner_B_Prep_Start"],
+      "primary_action": "Sync Dashboards",
+      "pro_trigger": "Dual_User_Sync_Active"
+    },
+    {
+      "phase_name": "Stimulation (Partner A)",
+      "milestones": ["A_Retrieval_Scheduled", "A_Trigger_Shot"],
+      "primary_action": "Partner A Stim Log",
+      "pro_trigger": "9_PM_SOS_Active"
+    },
+    {
+      "phase_name": "Prep (Partner B)",
+      "milestones": ["B_Lining_Check", "B_Progesterone_Start"],
+      "primary_action": "Partner B Prep Log",
+      "pro_trigger": "In-Clinic_Capture_Active"
+    },
+    {
+      "phase_name": "Retrieval & Transfer",
+      "milestones": ["A_Retrieval", "B_Transfer"],
+      "primary_action": "Dual Retrieval/Transfer Mode",
+      "pro_trigger": "Retrieval_Mode_Active",
+      "delegated_view_active": true
+    }
+  ]
+}

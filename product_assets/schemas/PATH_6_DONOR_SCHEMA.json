@@ -1,0 +1,30 @@
+{
+  "path_id": "donor_006",
+  "name": "Donor Cycle (Egg/Sperm)",
+  "phases": [
+    {
+      "phase_name": "Donor Selection & Match",
+      "milestones": ["Donor_Reserved", "Legal_Contracts_Signed"],
+      "primary_action": "Document Vaulting",
+      "pro_trigger": "Legal_Vault_Active"
+    },
+    {
+      "phase_name": "Material Logistics",
+      "milestones": ["Shipment_Initiated", "Clinic_Receipt_Confirmed"],
+      "primary_action": "Track Shipment",
+      "pro_trigger": "Loop_Closer_Logistics_Sync"
+    },
+    {
+      "phase_name": "Recipient Prep",
+      "milestones": ["Meds_Start", "Transfer_Scheduled"],
+      "primary_action": "Log Medications",
+      "pro_trigger": "9_PM_SOS_Active"
+    },
+    {
+      "phase_name": "Transfer & Results",
+      "milestones": ["Transfer_Procedure", "Beta_Test"],
+      "primary_action": "Transfer Mode",
+      "pro_trigger": "Sanctuary_Mode_Active"
+    }
+  ]
+}

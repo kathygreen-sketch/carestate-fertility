@@ -1,0 +1,37 @@
+{
+  "path_id": "surrogacy_007",
+  "name": "Gestational Surrogacy (Intended Parent)",
+  "phases": [
+    {
+      "phase_name": "Matching & Legal",
+      "milestones": ["Surrogate_Match", "Legal_Clearance"],
+      "primary_action": "Store Legal Agreements",
+      "pro_trigger": "Legal_Vault_Active"
+    },
+    {
+      "phase_name": "Surrogate Cycle Prep",
+      "milestones": ["Surrogate_Med_Start", "Lining_Check"],
+      "primary_action": "Remote Cycle Monitoring",
+      "pro_trigger": "Loop_Closer_Active"
+    },
+    {
+      "phase_name": "Transfer Day",
+      "milestones": ["Embryo_Transfer", "Pregnancy_Confirmed"],
+      "primary_action": "Support Surrogate",
+      "pro_trigger": "Sanctuary_Mode_Shared"
+    },
+    {
+      "phase_name": "Pregnancy Management",
+      "milestones": ["1st_Trimester_Graduation", "Birth_Plan_Finalized"],
+      "primary_action": "Log Doctor Visits",
+      "pro_trigger": "In-Clinic_Capture_Active"
+    },
+    {
+      "phase_name": "The Delivery",
+      "milestones": ["Hospital_Check_In", "Birth"],
+      "primary_action": "Birth Mode",
+      "pro_trigger": "Retrieval_Mode_Active",
+      "delegated_view_active": true
+    }
+  ]
+}

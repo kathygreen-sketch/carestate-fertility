@@ -1,0 +1,12 @@
+{
+  "common": {
+    "next_step": "Next Best Step",
+    "foundation_gate": "Confidence Baseline",
+    "verified": "Verified",
+    "sos_bridge": "9 PM SOS Bridge"
+  },
+  "sanctuary": {
+    "warmth_protocol": "The Warmth Protocol",
+    "create_warmth": "Create the Warmth"
+  }
+}
